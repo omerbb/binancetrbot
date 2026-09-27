@@ -1,0 +1,542 @@
+{
+  "checkpoint": "C:\\Users\\xxtra\\OneDrive\\Desktop\\borsaprojesi\\binancetrbot_laya\\models\\laya-bsjev",
+  "weights_sha256": "66a5cfff19375e18a6d01ec6bd95e94b0e2da8de068298e9023c0f4bc8bd9b79",
+  "dataset_sha256": "ee99847bf492a37c3de5e4b0d22ba417a93adff0ae0059af4f24350724ac0725",
+  "contract_invalid_responses": 0,
+  "latency_ms_per_state": {
+    "p50": 200.4,
+    "max": 566.9,
+    "device": "cuda"
+  },
+  "splits": {
+    "calib": {
+      "teacher_agreement": {
+        "action": {
+          "agree": 0.6341,
+          "soft": 0.336,
+          "tv": 0.1065,
+          "majority": 0.4683,
+          "gate_laya_0.3": 0.0195,
+          "gate_jev_0.3": 0.2195,
+          "n": 205
+        },
+        "allocation": {
+          "agree": 0.6634,
+          "soft": 0.3365,
+          "tv": 0.0649,
+          "majority": 0.6732,
+          "gate_laya_0.3": 0.0,
+          "gate_jev_0.3": 0.0098,
+          "n": 205
+        },
+        "reason_code": {
+          "agree": 0.9854,
+          "soft": 0.5438,
+          "tv": 0.1228,
+          "majority": 0.439,
+          "gate_laya_0.3": 1.0,
+          "gate_jev_0.3": 0.9902,
+          "n": 205
+        },
+        "regime": {
+          "agree": 0.6976,
+          "soft": 0.4597,
+          "tv": 0.2842,
+          "majority": 0.522,
+          "gate_laya_0.3": 0.7561,
+          "gate_jev_0.3": 0.922,
+          "n": 205
+        },
+        "setup_quality": {
+          "agree": 0.8634,
+          "soft": 0.4745,
+          "tv": 0.1002,
+          "majority": 0.0,
+          "gate_laya_0.3": 0.8927,
+          "gate_jev_0.3": 0.8439,
+          "score_mae": 0.1258,
+          "n": 205
+        },
+        "portfolio_action": {
+          "agree": 0.9615,
+          "soft": 0.4895,
+          "tv": 0.071,
+          "majority": 0.9615,
+          "gate_laya_0.3": 0.1923,
+          "gate_jev_0.3": 0.9615,
+          "n": 26
+        },
+        "prebuy_authorization": {
+          "agree": 0.0,
+          "soft": 0.3231,
+          "tv": 0.2677,
+          "majority": 0.0,
+          "gate_laya_0.3": 1.0,
+          "gate_jev_0.3": 0.0,
+          "n": 1
+        }
+      },
+      "forecast": {
+        "recorded": {
+          "log_loss": 1.8859,
+          "baseline_log_loss": 1.9083,
+          "level_accuracy": 0.2171,
+          "rps": 0.1742,
+          "spearman_expected_vs_realized": 0.0732,
+          "n": 152
+        },
+        "synthetic_prebuy": {
+          "log_loss": 1.8847,
+          "baseline_log_loss": 1.9083,
+          "level_accuracy": 0.2303,
+          "rps": 0.1746,
+          "spearman_expected_vs_realized": 0.0771,
+          "n": 152
+        },
+        "synthetic_position": {
+          "log_loss": 1.883,
+          "baseline_log_loss": 1.9048,
+          "level_accuracy": 0.2241,
+          "rps": 0.1731,
+          "spearman_expected_vs_realized": -0.0026,
+          "n": 116
+        }
+      },
+      "entry_backtest": {
+        "eligible": 83,
+        "by_threshold": {
+          "-0.3": {
+            "trades": 26,
+            "mean_net_pct": -0.2123,
+            "sum_net_pct": -5.5192,
+            "hit_rate": 0.2692,
+            "symbols": 20
+          },
+          "-0.25": {
+            "trades": 7,
+            "mean_net_pct": -0.0866,
+            "sum_net_pct": -0.6061,
+            "hit_rate": 0.1429,
+            "symbols": 7
+          },
+          "-0.2": {
+            "trades": 1,
+            "mean_net_pct": -0.2757,
+            "sum_net_pct": -0.2757,
+            "hit_rate": 0.0,
+            "symbols": 1
+          },
+          "-0.15": {
+            "trades": 0
+          },
+          "-0.1": {
+            "trades": 0
+          },
+          "-0.05": {
+            "trades": 0
+          },
+          "0.0": {
+            "trades": 0
+          },
+          "0.05": {
+            "trades": 0
+          },
+          "0.1": {
+            "trades": 0
+          },
+          "0.15": {
+            "trades": 0
+          },
+          "0.2": {
+            "trades": 0
+          },
+          "0.25": {
+            "trades": 0
+          },
+          "0.3": {
+            "trades": 0
+          },
+          "0.35": {
+            "trades": 0
+          },
+          "0.4": {
+            "trades": 0
+          },
+          "0.45": {
+            "trades": 0
+          },
+          "0.5": {
+            "trades": 0
+          },
+          "0.55": {
+            "trades": 0
+          },
+          "0.6": {
+            "trades": 0
+          },
+          "0.65": {
+            "trades": 0
+          },
+          "0.7": {
+            "trades": 0
+          },
+          "0.75": {
+            "trades": 0
+          },
+          "0.8": {
+            "trades": 0
+          },
+          "0.85": {
+            "trades": 0
+          },
+          "0.9": {
+            "trades": 0
+          },
+          "0.95": {
+            "trades": 0
+          },
+          "1.0": {
+            "trades": 0
+          },
+          "1.05": {
+            "trades": 0
+          },
+          "1.1": {
+            "trades": 0
+          },
+          "1.15": {
+            "trades": 0
+          },
+          "1.2": {
+            "trades": 0
+          }
+        },
+        "baselines": {
+          "buy_every_unblocked": {
+            "trades": 83,
+            "mean_net_pct": -0.3551,
+            "sum_net_pct": -29.4695,
+            "hit_rate": 0.2289,
+            "symbols": 58
+          },
+          "jev_action_buy": {
+            "trades": 0
+          },
+          "legacy_strategy_buy": {
+            "trades": 22,
+            "mean_net_pct": -0.4797,
+            "sum_net_pct": -10.5536,
+            "hit_rate": 0.2273,
+            "symbols": 19
+          },
+          "laya_imitation_action_buy": {
+            "trades": 0
+          }
+        },
+        "blocked_by_guardrails": 69
+      },
+      "exit_backtest": {
+        "min_exit_edge_pct": 0.05,
+        "sell_signals": 1,
+        "realized_mid_change_after_sell_signal_pct": 0.1535,
+        "hold_signals": 115,
+        "realized_mid_change_after_hold_signal_pct": 0.0207,
+        "note": "a sell is useful when the price then falls (negative number after sell signals)"
+      }
+    },
+    "test": {
+      "teacher_agreement": {
+        "action": {
+          "agree": 0.5992,
+          "soft": 0.3345,
+          "tv": 0.1212,
+          "majority": 0.562,
+          "gate_laya_0.3": 0.0041,
+          "gate_jev_0.3": 0.2769,
+          "n": 242
+        },
+        "allocation": {
+          "agree": 0.6777,
+          "soft": 0.3362,
+          "tv": 0.0615,
+          "majority": 0.686,
+          "gate_laya_0.3": 0.0,
+          "gate_jev_0.3": 0.0,
+          "n": 242
+        },
+        "reason_code": {
+          "agree": 0.9752,
+          "soft": 0.5592,
+          "tv": 0.0911,
+          "majority": 0.6322,
+          "gate_laya_0.3": 0.9959,
+          "gate_jev_0.3": 1.0,
+          "n": 242
+        },
+        "regime": {
+          "agree": 0.7851,
+          "soft": 0.4934,
+          "tv": 0.2254,
+          "majority": 0.7645,
+          "gate_laya_0.3": 0.8471,
+          "gate_jev_0.3": 0.9298,
+          "n": 242
+        },
+        "setup_quality": {
+          "agree": 0.8595,
+          "soft": 0.4536,
+          "tv": 0.0843,
+          "majority": 0.0,
+          "gate_laya_0.3": 0.8058,
+          "gate_jev_0.3": 0.7934,
+          "score_mae": 0.1166,
+          "n": 242
+        },
+        "portfolio_action": {
+          "agree": 0.95,
+          "soft": 0.4899,
+          "tv": 0.0834,
+          "majority": 0.95,
+          "gate_laya_0.3": 0.05,
+          "gate_jev_0.3": 0.9,
+          "n": 20
+        }
+      },
+      "forecast": {
+        "recorded": {
+          "log_loss": 1.8023,
+          "baseline_log_loss": 1.8242,
+          "level_accuracy": 0.2513,
+          "rps": 0.1353,
+          "spearman_expected_vs_realized": -0.0241,
+          "n": 191
+        },
+        "synthetic_position": {
+          "log_loss": 1.7946,
+          "baseline_log_loss": 1.8137,
+          "level_accuracy": 0.2873,
+          "rps": 0.135,
+          "spearman_expected_vs_realized": -0.013,
+          "n": 181
+        },
+        "synthetic_prebuy": {
+          "log_loss": 1.808,
+          "baseline_log_loss": 1.8242,
+          "level_accuracy": 0.2513,
+          "rps": 0.1361,
+          "spearman_expected_vs_realized": -0.0706,
+          "n": 191
+        }
+      },
+      "entry_backtest": {
+        "eligible": 135,
+        "by_threshold": {
+          "-0.3": {
+            "trades": 82,
+            "mean_net_pct": -0.345,
+            "sum_net_pct": -28.2914,
+            "hit_rate": 0.0,
+            "symbols": 63
+          },
+          "-0.25": {
+            "trades": 26,
+            "mean_net_pct": -0.3309,
+            "sum_net_pct": -8.6038,
+            "hit_rate": 0.0,
+            "symbols": 21
+          },
+          "-0.2": {
+            "trades": 1,
+            "mean_net_pct": -0.5456,
+            "sum_net_pct": -0.5456,
+            "hit_rate": 0.0,
+            "symbols": 1
+          },
+          "-0.15": {
+            "trades": 0
+          },
+          "-0.1": {
+            "trades": 0
+          },
+          "-0.05": {
+            "trades": 0
+          },
+          "0.0": {
+            "trades": 0
+          },
+          "0.05": {
+            "trades": 0
+          },
+          "0.1": {
+            "trades": 0
+          },
+          "0.15": {
+            "trades": 0
+          },
+          "0.2": {
+            "trades": 0
+          },
+          "0.25": {
+            "trades": 0
+          },
+          "0.3": {
+            "trades": 0
+          },
+          "0.35": {
+            "trades": 0
+          },
+          "0.4": {
+            "trades": 0
+          },
+          "0.45": {
+            "trades": 0
+          },
+          "0.5": {
+            "trades": 0
+          },
+          "0.55": {
+            "trades": 0
+          },
+          "0.6": {
+            "trades": 0
+          },
+          "0.65": {
+            "trades": 0
+          },
+          "0.7": {
+            "trades": 0
+          },
+          "0.75": {
+            "trades": 0
+          },
+          "0.8": {
+            "trades": 0
+          },
+          "0.85": {
+            "trades": 0
+          },
+          "0.9": {
+            "trades": 0
+          },
+          "0.95": {
+            "trades": 0
+          },
+          "1.0": {
+            "trades": 0
+          },
+          "1.05": {
+            "trades": 0
+          },
+          "1.1": {
+            "trades": 0
+          },
+          "1.15": {
+            "trades": 0
+          },
+          "1.2": {
+            "trades": 0
+          }
+        },
+        "baselines": {
+          "buy_every_unblocked": {
+            "trades": 135,
+            "mean_net_pct": -0.355,
+            "sum_net_pct": -47.9232,
+            "hit_rate": 0.0074,
+            "symbols": 101
+          },
+          "jev_action_buy": {
+            "trades": 0
+          },
+          "legacy_strategy_buy": {
+            "trades": 49,
+            "mean_net_pct": -0.3455,
+            "sum_net_pct": -16.9302,
+            "hit_rate": 0.0204,
+            "symbols": 42
+          },
+          "laya_imitation_action_buy": {
+            "trades": 0
+          }
+        },
+        "blocked_by_guardrails": 56
+      },
+      "exit_backtest": {
+        "min_exit_edge_pct": 0.05,
+        "sell_signals": 0,
+        "realized_mid_change_after_sell_signal_pct": null,
+        "hold_signals": 181,
+        "realized_mid_change_after_hold_signal_pct": -0.0501,
+        "note": "a sell is useful when the price then falls (negative number after sell signals)"
+      }
+    }
+  },
+  "policy": {
+    "entry_min_expected_edge_pct": 0.05,
+    "edge_found_on_calibration": false,
+    "selected_on": "calib",
+    "calib_at_threshold": null,
+    "test_at_threshold": {
+      "trades": 0
+    },
+    "horizon_seconds": 300
+  },
+  "base_zero_shot_test_teacher_agreement": {
+    "action": {
+      "agree": 0.0,
+      "soft": 0.0939,
+      "tv": 0.7396,
+      "majority": 0.562,
+      "gate_laya_0.3": 1.0,
+      "gate_jev_0.3": 0.2769,
+      "n": 242
+    },
+    "allocation": {
+      "agree": 0.062,
+      "soft": 0.3247,
+      "tv": 0.2303,
+      "majority": 0.686,
+      "gate_laya_0.3": 0.376,
+      "gate_jev_0.3": 0.0,
+      "n": 242
+    },
+    "reason_code": {
+      "agree": 0.0,
+      "soft": 0.0629,
+      "tv": 0.8378,
+      "majority": 0.6322,
+      "gate_laya_0.3": 0.9008,
+      "gate_jev_0.3": 1.0,
+      "n": 242
+    },
+    "regime": {
+      "agree": 0.062,
+      "soft": 0.1623,
+      "tv": 0.6912,
+      "majority": 0.7645,
+      "gate_laya_0.3": 0.9917,
+      "gate_jev_0.3": 0.9298,
+      "n": 242
+    },
+    "setup_quality": {
+      "agree": 0.0,
+      "soft": 0.0687,
+      "tv": 0.829,
+      "majority": 0.0,
+      "gate_laya_0.3": 0.9132,
+      "gate_jev_0.3": 0.7934,
+      "score_mae": 1.847,
+      "n": 242
+    },
+    "portfolio_action": {
+      "agree": 0.05,
+      "soft": 0.3354,
+      "tv": 0.393,
+      "majority": 0.95,
+      "gate_laya_0.3": 0.5,
+      "gate_jev_0.3": 0.9,
+      "n": 20
+    }
+  },
+  "base_contract_invalid_responses": 0
+}

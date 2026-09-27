@@ -1,0 +1,10 @@
+# Laya engine on top of requirements.txt. Install a CUDA build of torch first for GPU inference:
+#   https://pytorch.org/get-started/locally/
+-r requirements.txt
+torch>=2.2
+transformers>=4.48,<6
+safetensors>=0.4
+huggingface_hub>=0.20
+# Laya itself: the local source checkout (tested 0.3.20) or PyPI
+#   pip install --no-deps -e ../laya-main/laya-main
+laya>=0.3.20

@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 
 from bot import BinanceTrBot
+from decision.contracts import MODEL_ENGINES
 from config import (
     load_config,
     save_config,
@@ -63,9 +64,9 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 async def auth_middleware(request: Request, call_next):
     async def authorized_forward():
         path = request.url.path
-        locked = bot_instance.is_running and (bot_instance.config.decision.engine == "jev" or getattr(bot_instance, "_decision_controller", None) is not None)
+        locked = bot_instance.is_running and (bot_instance.config.decision.engine in MODEL_ENGINES or getattr(bot_instance, "_decision_controller", None) is not None)
         if locked and request.method == "POST" and (path.startswith("/api/config") or path == "/api/start"):
-            return JSONResponse(status_code=409, content={"status": "error", "message": "JEV oturumu çalışırken ayarlar değiştirilemez. Önce durdurun; yeni oturum sürümlenerek açılır."})
+            return JSONResponse(status_code=409, content={"status": "error", "message": "Model karar oturumu çalışırken ayarlar değiştirilemez. Önce durdurun; yeni oturum sürümlenerek açılır."})
         return await call_next(request)
 
     auth_cfg = getattr(bot_instance.config, "auth", None)
@@ -208,7 +209,7 @@ async def update_full_config(req: FullConfigRequest):
     candidate = copy.deepcopy(bot_instance.config)
     try:
         update_config_from_dict(candidate, payload)
-        if candidate.decision.engine == "jev":
+        if candidate.decision.engine in MODEL_ENGINES:
             from decision.contracts import validate_config
             validate_config(candidate)
             if candidate.trading.mode != "simulation": raise ValueError("JEV yalnızca simulation/replay modunda çalışır.")
@@ -339,15 +340,13 @@ async def start_bot(req: StartRequest):
         candidate.trading.only_uptrend = req.only_uptrend
 
     try:
-        if candidate.decision.engine == "jev":
+        if candidate.decision.engine in MODEL_ENGINES:
             from decision.contracts import validate_config
-            from decision.openrouter import OpenRouterJevProvider
+            from decision.providers import preflight
             validate_config(candidate)
             if candidate.trading.mode != "simulation": raise ValueError("JEV live execution disabled")
             if bot_instance._decision_provider is None:
-                probe = OpenRouterJevProvider(candidate.decision)
-                try: probe.check_ready()
-                finally: probe.close()
+                preflight(candidate.decision)
         bot_instance.apply_config(candidate)
         bot_instance.start(duration_minutes=req.duration_minutes)
     except (ValueError, RuntimeError) as exc:
@@ -369,7 +368,7 @@ async def force_buy(payload: Optional[Dict[str, Any]] = Body(default=None)):
         return JSONResponse(status_code=400, content={"status": "error", "message": "budget sayısal olmalı"})
     if symbol is not None and (not isinstance(symbol, str) or not __import__('re').fullmatch(r"[A-Z0-9]+_TRY", symbol)):
         return JSONResponse(status_code=400, content={"status": "error", "message": "Geçerli açık TRY paritesi gerekli"})
-    if bot_instance.config.decision.engine == "jev" and not symbol:
+    if bot_instance.config.decision.engine in MODEL_ENGINES and not symbol:
         return JSONResponse(status_code=400, content={"status": "error", "message": "Manuel JEV dışı alımda symbol açıkça belirtilmeli (ör. SOL_TRY)."})
     pos = bot_instance.force_test_buy(symbol=symbol, budget=budget, reason="Kullanıcı Test Alımı")
     if pos:
@@ -434,7 +433,7 @@ async def update_config(req: ConfigUpdateRequest):
         cfg.trading.only_uptrend = req.only_uptrend
 
     try:
-        if cfg.decision.engine == "jev":
+        if cfg.decision.engine in MODEL_ENGINES:
             from decision.contracts import validate_config
             validate_config(cfg)
         bot_instance.apply_config(cfg)
@@ -473,7 +472,8 @@ async def recent_decisions(limit: int = 20):
         rows = [dict(row) for row in connection.execute("SELECT decision_id,stage,symbol,as_of,source,parent_id FROM decisions WHERE run_id=? ORDER BY rowid DESC LIMIT ?", (controller.run_id, max(1, min(limit, 100))))]
         for row in rows:
             row.update(model_choice=None, confidence=None, valid=None, applied_action=None, reasons=[], execution=None,
-                       allocation_choice=None, allocation_confidence=None, allocation_fallback=None, retry_count=0)
+                       allocation_choice=None, allocation_confidence=None, allocation_fallback=None, retry_count=0,
+                       expected_value=None)
             for event in connection.execute("SELECT kind,data_json FROM events WHERE decision_id=? ORDER BY sequence", (row["decision_id"],)):
                 data = json.loads(event["data_json"])
                 if event["kind"] == "model_response":
@@ -486,6 +486,11 @@ async def recent_decisions(limit: int = 20):
                                model=raw.get("model"), cost_usd=usage.get("cost"))
                     allocation = answers.get("allocation") if isinstance(answers.get("allocation"), dict) else {}
                     row.update(allocation_choice=allocation.get("choice"), allocation_confidence=allocation.get("confidence"))
+                elif event["kind"] == "expected_value_assessment":
+                    costs = data.get("costs") if isinstance(data.get("costs"), dict) else {}
+                    row["expected_value"] = {"side": data.get("side"), "expected_mid_return_pct": data.get("expected_mid_return_pct"),
+                                             "cost_pct": costs.get("total_pct"), "edge_pct": data.get("edge_pct"),
+                                             "threshold_pct": data.get("threshold_pct"), "action": data.get("action")}
                 elif event["kind"] == "allocation_fallback":
                     row["allocation_fallback"] = {"budget_try": data["budget_try"], "selected_allocation": data["selected_allocation"]}
                 elif event["kind"] == "decision_retry":

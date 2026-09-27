@@ -1,84 +1,92 @@
-# Fork notları: JEV (OpenRouter System One) sürümü
+# Fork notları: Laya (yerel model) sürümü
 
-**Upstream:** [cihancosgun/binancetrbot](https://github.com/cihancosgun/binancetrbot), `main` @ `2639db9`
-**Bu fork:** upstream'in üzerine tek bir commit. Kural tabanlı karar döngüsünün yanına, isteğe bağlı bir **model karar motoru** (`decision.engine: jev`) ekler. Kararları TypeSafe **JEV 1.13**, OpenRouter System One API üzerinden verir. Model motoru **yalnızca sanal işlem** yapar; gerçek emir kapalıdır.
-**Devamı:** Laya forku bu commit'in üzerine kurulur ve JEV'in yerine, bu forktaki kayıtlarla ince ayar yapılmış yerel **Laya** modelini koyar.
+**Soy ağacı:** [cihancosgun/binancetrbot](https://github.com/cihancosgun/binancetrbot) `2639db9` → JEV commit'i `10921ea` → bu Laya commit'i.
+- JEV katmanının açıklaması: [FORK_NOTES_JEV.md](FORK_NOTES_JEV.md).
+- Kullanım kılavuzu ve tüm sonuçlar: [LAYA_INTEGRATION.md](LAYA_INTEGRATION.md).
+- Model kökenleri: [models/README.md](models/README.md).
 
-## 1. Upstream'e göre mimari değişiklikler
+Bu fork, JEV'in (OpenRouter, ücretli, ~0,7–4 sn) yerine bu makinede çalışan, ince ayarlı **Laya** karar modelini koyar. Laya, JEV'in geçmiş kararları ve gerçekleşen piyasa sonuçlarıyla eğitildi. API anahtarı, ağ bağlantısı ve çağrı başı ücret yoktur. Gerçek emir kapalıdır; yalnızca sanal işlem yapılır.
 
-Yeni paket `decision/` (upstream'de yok):
+## 1. JEV sürümüne göre mimari değişiklikler
+
+**Yeni modüller:**
 
 | Dosya | Görev |
 |---|---|
-| `contracts.py` | Şema/politika sürümleri, gizli alan temizleme (`clean`), config doğrulama, yanıt doğrulama, sağlayıcıdan bağımsız `DecisionProvider` sözleşmesi |
-| `questions.py` | Tipli sorular: portföy (`CONTINUE/PAUSE_ENTRIES/FLATTEN`), aday (`BUY/WAIT/OBSERVE/SKIP` + tutar), pozisyon (`HOLD/SELL/SELL_PARTIAL/ROLLOVER`), son alım onayı (`EXECUTE/WAIT/CANCEL`), tanısal regime/reason_code/setup_quality |
-| `controller.py` | Model kararları + deterministik guardrail'ler + sanal dolum; legacy `bot.step` bu modda hiç çalışmaz |
-| `openrouter.py` | System One HTTP istemcisi, sınırlı tekrar, deadline, sanitize edilmiş hata kodları |
-| `inference.py` | Tek eşzamanlı çıkarım işçisi; iptal ve deadline; beklerken risk kontrolü sürer |
-| `journal.py` | SQLite (WAL, `synchronous=FULL`) karar/olay/sonuç defteri: 60/300/900 sn markout'lar, pozisyon muhasebesi |
-| `replay.py`, `csv_replay.py` | Aynı kontrolcüyle ileri-yönlü tarihsel replay |
-| `export.py`, `fixtures.py` | Eğitim dışa aktarımı (requests/questions/sft), açıkça işaretli test sağlayıcısı |
+| `decision/laya_state.py` | State'i ~12 KB JSON'dan (~8.400 token) ~1,5 KB (~620 token) kompakt metne çevirir. Mum ve tick dizilerini türetilmiş özelliklere indirger. Eğitim ve canlıda **aynı** fonksiyon çalışır. Format sürümü `laya-compact-v1`; soru uyarlama ve kapsam anahtarı burada. |
+| `decision/laya_provider.py` | Yerel çıkarım. Yanıtları JEV sözleşmesine çevirir; güveni JEV formülü `(n·p_max−1)/(n−1)` ile hesaplar. Batch (`evaluate_batch`), sıcak ve paylaşılan model, CUDA hatasında güvenli yeniden yükleme, checkpoint doğrulama. |
+| `decision/expected_value.py` | Maliyet ve kenar aritmetiği: ask'ten alış, bid'den satış, iki taraf komisyon ve kayma. |
+| `decision/providers.py` | Motora göre sağlayıcı seçimi ve ucuz ön kontrol. |
+| `decision/laya_dataset.py` | Öğretmen (JEV dağılımları) ve outcome (gözlenen 5 dk markout) satırları. Türetilmiş pozisyon/prebuy state'leri; oturum veya zaman bazlı ayrım (15 dk boşlukla). |
+| `tools/laya_build_dataset.py`, `laya_finetune.py`, `laya_evaluate.py`, `laya_probe.py` | Uçtan uca eğitim hattı |
+| `research/outcome_path_analysis.py` | Fiyat yolu bazlı geriye dönük analiz |
 
-Upstream'de değişen 17 dosya (satır bazında `+839 / −331`):
-- `bot.py`: motor seçimi, model modunda legacy döngüden kontrolcüye geçiş, tazelik kontrolleri.
-- `core/market_data.py`: yalnızca kapanmış mumlar, Wilder göstergeleri, veri kalite nedenleri, mum ve kotasyon zaman damgaları.
-- `core/market_scanner.py`: özellik-modu (stratejik eleme yok), mikro-momentum metrikleri.
-- `core/simulator.py`, `core/risk_manager.py`: net tasfiye K/Z, `risk_reference_price` devri.
-- `core/binance_client.py`, `core/live_trader.py`: sağlamlaştırma.
-- `web/*`: model karar paneli, oturum sırasında ayar kilidi (409), `/api/decisions/*` uç noktaları.
-- 4 test güncellemesi.
+**Değişen 15 dosya:**
+- `decision/controller.py`:
+  - batch adım (sırası gelen tüm semboller tek sağlayıcı çağrısında),
+  - paralel piyasa verisi ön-çekimi,
+  - dakika başına borsa isteği bütçesi,
+  - alım adaylarının beklenen kenara göre sıralanması,
+  - beklenen-değer giriş/çıkış kuralı ve kalibre eşik çözümü,
+  - portföy düşük-güven politikası,
+  - deterministik modelde gereksiz tekrarın atlanması.
+- `decision/questions.py`: outcome ile eğitilen `forward_return_5m` sorusu, 7 seviyeli ve ayrı "değişmedi" seviyesiyle.
+- `decision/contracts.py`, `config.py`: `engine: laya`, politika sürümü `laya-spot-policy-v1`, yeni ayarların doğrulaması.
+- `decision/journal.py`, `inference.py`, `replay.py`: motor bazlı politika sürümü, batch çıkarım, Laya replay'i.
+- `bot.py`, `web/*`: motor etiketleri ve model paneli. Panel her karar için beklenen getiri, maliyet, net kenar ve eşiği gösterir.
+- `tools/replay_jev.py`, `tools/run_offline_tests.py`.
 
-Yeni araçlar `tools/` altında: `probe_jev.py`, `replay_jev.py`, `run_jev_demo.py` (bütçe sınırlı), `export_decisions.py`, `ohlcv_to_replay.py`, `run_offline_tests.py` (ağ ve gerçek emir engelli), `summarize_jev_audit.py`.
+**Testler:** 301 (JEV sürümü 277 + 24 Laya testi). Model yüklenmeden çalışır: `python tools/run_offline_tests.py -q`.
 
-Test paketi: **277 test** (upstream: 38). Hepsi bu forkta geçti. Çalıştırmak için: `python tools/run_offline_tests.py -q`.
+## 2. Dahil edilen modeller ve veriler
 
-Ayrıntılı tasarım: [JEV_INTEGRATION.md](JEV_INTEGRATION.md). Denetim ve düzeltme raporları: `JEV_KARAR_DENETIMI_2026-09-26.md`, `JEV_DUZELTME_RAPORU_2026-09-26.md`, `JEV_TESLIM_RAPORU.md`, `JEV_WEB_TEST.md`, `DEMO_REPORT.md`, `PRE_JEV_NOTES.md`.
-
-## 2. Forka dahil edilen veri
-
-`.gitignore` çalışma zamanı verisini hâlâ dışarıda tutar. Aşağıdaki dosyalar yayın için bilinçli olarak eklendi (`git add -f`). SQLite dosyaları WAL içerikleri dahil tek dosyalık tutarlı anlık görüntülerdir.
+Büyük dosyalar **Git LFS**'te: 2 model, gece veritabanı ve Laya veri setleri. Toplam ~2,2 GB.
 
 | Yol | Boyut | İçerik |
 |---|---|---|
-| `data/jev_demo.sqlite3` | 44 MB | **Gerçek JEV kayıtları.** 10 oturum (22 ve 27 Eyl 2026), 1.657 karar, 1.641 geçerli JEV yanıtı, 60/300/900 sn piyasa sonuçları. Laya'nın öğretmen verisi budur. |
-| `data/jev_demo_summary.json` | 1 KB | Son demo oturumunun özeti |
-| `data/fixture_demo.sqlite3`, `data/demo_frames.jsonl` | 6 MB | **Fixture (JEV değil)** replay demosu, sentetik veri |
-| `verification/jev_audit_20260926/`, `verification/jev_fix_20260926/` | 48 MB | Denetim ve düzeltme koşuları: 3 küçük gerçek JEV replay DB'si (34 karar), fixture replay'ler, soru export'ları, test logları ve metrikler |
-| `verification/jev/`, `verification/pre_jev/`, `verification/local/` | küçük | Entegrasyon doğrulaması, önceki sürüm kayıtları, ortam bilgisi |
-| `exports/` | 6 MB | Fixture export örneği (öğretmen verisi değildir) |
-| `reports/` | 0,2 MB | Sanal test oturumlarının HTML/JSON karneleri |
-| `config.jev.demo.example.yaml` | – | Kayıtlı demo oturumlarının ayarları; anahtar ve parola **kaldırıldı** |
+| `models/laya-bsjev-night/` | 644 MB + tokenizer | **Varsayılan** checkpoint: v1 + 8 saatlik Laya sonuçları |
+| `models/laya-bsjev/` | 644 MB + tokenizer | v1: JEV kararları + sonuçları. Geri dönüş seçeneği; JEV taklidi daha iyi |
+| `data/laya_night.sqlite3` | 453 MB | Laya canlı sanal oturumu: 27 Eyl 2026 04:45–12:45, 15.646 karar, 309 sembol, 14.527 gözlenmiş 5 dk sonucu |
+| `data/laya_dataset/` | 46 MB | v1 eğitim seti. `sha256 ee99847b…`; repo içi DB'lerden bayt bayt yeniden üretilebilir |
+| `data/laya_dataset_night/` | 318 MB | Gece eğitim seti. `sha256 ac316a80…`; aynı şekilde yeniden üretilebilir |
+| `data/laya_live_smoke.sqlite3` | 5 MB | 3 dk'lık ilk canlı doğrulama |
+| `data/replay/` | küçük | Sentetik SOL_TRY replay'i: kareler, config'ler, journal |
+| `data/jev_demo.sqlite3`, `verification/` | 92 MB | JEV katmanından: öğretmen verisi |
+| `reports/laya_eval_*.json` | küçük | v1, gece modeli, v1'in yeni veride ölçümü |
+| `logs/` | küçük | Tüm eğitim logları, reddedilen v2 dahil |
 
-**Hariç tutulanlar:** `config.jev.demo.yaml` (gerçek OpenRouter anahtarı ve panel parola hash'i içeriyordu; **anahtar iptal edilip yenilenmeli**), `local/` (panel kimlik bilgisi dosyası ve ham çalışma logları), `.venv`, önbellekler. Yayından önce tüm dosyalar anahtar ve parola hash'i için tarandı; veritabanlarında ve loglarda sızıntı yok, `clean()` kayıt öncesi maskeliyor.
+## 3. Gözlemler (zaman sırasıyla)
 
-## 3. Gözlemler (kayıtlardan ölçülen)
+1. **JEV neden almadı:** 1.499 adayın 995'i düşük güven yedeğine düştü. JEV'in güven formülü ve 0,3 eşiği yüzünden BUY önerileri de son onayda düştü.
+2. **Almamak ortalamada doğruydu:** 5 dk'da komisyon sonrası kârlı oran %10,9, ortalama −%0,39.
+3. **Taban Laya kullanılamaz, ince ayar şart:** test oturumunda taban modelin JEV ile uyumu ~0. v1'de action 0,60 / regime 0,79 / reason_code 0,98 / setup_quality 0,86.
+4. **v1'in 5 dk tahmini zayıf:** test log-loss 1,80, marjinal taban 1,82, basit volatilite kovası 1,73. Sadece tahmine odaklanan ikinci aşama **aşırı öğrendi** (kalibrasyon CE 1,91 → 2,07) ve **reddedildi**; ~770 benzersiz etiketle veri sınırlıydı.
+5. **Canlı doğrulama:** 3 dk'da 139 sembolde 177 aday (JEV demosu ~3), 0 çıkarım hatası. GPU'da karar başına ~200 ms; CPU'da ~2,5 sn.
+6. **Zorla sonlandırma testi:** Süreç zorla öldürüldü; veritabanı sağlam kaldı, commit edilmiş her şey korundu. Kaybolan yalnızca son dakikaların henüz oluşmamış etiketleri.
+7. **Gece verisi (14,5 bin sonuç):** Piyasa ortalamada yatay: 5 dk orta getiri +%0,01, komisyon sonrası net −%0,28. Hiçbir basit kesit pozitif değil (saat, volatilite, momentum, RSI, spread, legacy BUY).
+8. **Gece modeli:** Örneklem dışında marjinal tabanı geçen **ilk** tahmin (test 1,813; taban 1,825; v1 1,858). Ama öğrendiği hareketin büyüklüğü, yönü değil: sıra korelasyonu ≈ 0. Kalibrasyonda kenar yok; eşik +0,09; **0 alım**. JEV taklidi action'da 0,73'ten 0,63'e düştü.
+9. **Fiyat yolu analizi** (`research/outcome_path_analysis_night.txt`, 9.544 aday):
+   - Adayların **%38'inde** fiyat 15 dk içinde bir an maliyeti aştı; doğru anda satılsaydı kârlıydı.
+   - 20 kâr-al / zarar-kes kombinasyonunun hiçbiri pozitif ortalama vermedi. En iyi sonuçlar: tüm adaylar −%0,25; legacy BUY −%0,24; Laya'nın en iyi gördüğü %10 −%0,17.
+   - Model biraz ayırt edebiliyor, ama maliyeti (~%0,29) aşacak kadar değil.
+10. **Ufuk karşılaştırması:** 1/5/15 dk'da maliyeti aşan hareket payı %2,4 / %9,7 / %19,6; ortalama net −%0,29 / −%0,28 / −%0,26.
 
-**Neden hiç alım olmadı** (`data/jev_demo.sqlite3`):
+**Sonuç:** Mekanizma, kârlı olanı bulup en iyisinden başlayarak almaya hazır. Eksik olan, önceden tanınabilen bir yön sinyali. Maliyet, tipik hareket kadar büyük. Olası sonraki adımlar: 15 dk ufuklu tahmin, farklı gün ve saatlerden daha fazla veri, daha düşük maliyetli yürütme (maker emirleri veya düşük komisyon).
 
-| Bulgu | Sayı |
-|---|---|
-| Aday kararlarında "güven eşiğin altında → WAIT" yedeği | 995 / 1.499 |
-| JEV'in BUY dediği aday | 10 |
-| Son onaya giden BUY önerisi | 3; hepsi düşük güvenle WAIT |
-| Düşük güven yüzünden portföy `PAUSE_ENTRIES` | 40 / 155 |
-
-- JEV'in güveni `(n·p_max−1)/(n−1)`; aksiyon sorusunda ortalama 0,27. Demo profilinde eşik 0,3, 1 aday / 60 sn.
-- Aday isteği ~12 KB JSON, JEV tarafında ~8.400 input token. Aday çağrısı ~0,7–4 sn sürüyor ve ücretli.
-- **Almamak ortalamada doğruydu:** ask'ten alıp bid'den satmak, %0,2 komisyon dahil. 5 dk'da kârlı durum %10,9, ortalama −%0,39. 15 dk'da %15,5, ortalama −%0,71.
-- Guardrail blokları: `spread_limit` 451, `jev_portfolio_pause` 210, `stale_radar_features` 138, `session_entry_blackout` 55.
-- JEV, kayıtlarda hiç pozisyon kararı vermedi (0 pozisyon aşaması). Bu, öğretmen verisindeki bir boşluktur.
-
-## 4. Çalıştırma
+## 4. Yeniden üretim
 
 ```bash
-python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt
-cp config.jev.example.yaml config.jev.yaml      # parolayı değiştirin
-export OPENROUTER_API_KEY=...                    # PowerShell: $env:OPENROUTER_API_KEY = Read-Host -MaskInput
-python main.py --config config.jev.yaml --mode test
+git lfs install && git clone <bu repo> && cd binancetrbot-laya
+python -m venv .venv && .venv/Scripts/python -m pip install -r requirements-laya.txt
+.venv/Scripts/python tools/laya_probe.py --config config.laya.example.yaml
+.venv/Scripts/python main.py --config config.laya.example.yaml --mode test
 ```
 
-## 5. Hukuki ve kullanım notları
+Veri setlerini yeniden üretme, eğitim ve değerlendirme komutları: `LAYA_INTEGRATION.md` §5 ve §5b. Tüm yollar repo içidir. Bu ortamdaki doğrulama Python 3.13, torch 2.6.0+cu124, transformers 5.17, laya 0.3.20 ve RTX 4070 Laptop GPU (8 GB) ile yapıldı.
 
-- Upstream reposunda bir lisans dosyası yok. Bu fork, GitHub'daki fork mekanizmasıyla paylaşılmak üzere hazırlandı; yeniden lisanslama iddiası yoktur.
-- `data/` altındaki JEV yanıtları TypeSafe/OpenRouter çıktılarıdır. Bunları yayınlamadan veya başka bir modeli eğitmek için kullanmadan önce sağlayıcıların kullanım koşullarını kontrol edin.
-- Yatırım tavsiyesi değildir; model motoru yalnızca sanal işlem yapar.
+## 5. Sınırlar ve hukuki notlar
+
+- Sayılar tek makine, iki gün ve tek bir sabah oturumuna dayanıyor. Aynı dakikadaki kararlar birbiriyle koreledir. Markout'lar varsayımsaldır; derinlik ve gecikme modellenmedi. Performans vaadi değildir, yatırım tavsiyesi değildir.
+- Manifest ve metadata alanlarında yerel dosya yolları (Windows kullanıcı adı dahil) geçer.
+- Öğretmen hedeflerinin bir kısmı TypeSafe JEV çıktılarıdır. Veriyi ve bundan türeyen modelleri yayınlamadan önce TypeSafe ve OpenRouter kullanım koşullarını kontrol edin. Taban Laya modeli Apache-2.0 lisanslıdır.
+- Upstream reposunda lisans dosyası yok.

@@ -114,6 +114,26 @@ class DecisionConfig:
     slippage_bps: float = 0.0
     # Exact, bounded execution choices; new names here acquire a real BUY-size meaning.
     allocation_fractions: Dict[str, float] = field(default_factory=lambda: {"SMALL": 0.25, "HALF": 0.5, "FULL": 1.0})
+    # Laya: local fine-tuned checkpoint (tools/laya_finetune.py). No API key, network or per-call cost.
+    laya_checkpoint: str = "models/laya-bsjev"   # relative paths resolve against the project root
+    laya_device: str = "auto"                    # auto | cpu | cuda | cuda:N | mps | xpu
+    laya_max_len: int = 0                        # 0 = the max_len the checkpoint was trained with
+    laya_threads: int = 0                        # CPU intra-op threads; 0 = torch default
+    laya_batch_size: int = 8                     # states per forward pass (x ~6 question rows); bounds GPU memory
+    laya_untrained_questions: str = "answer"     # abstain = question never seen in training -> WAIT/HOLD fallback
+    # Scheduling that a local model makes affordable (JEV profiles keep the sequential defaults).
+    batch_inference: bool = False                # one batched forward pass for every due symbol per step
+    position_decision_interval_seconds: float = 0.0  # 0 = decision_interval_seconds
+    max_symbol_evaluations_per_minute: int = 0   # 0 = unlimited; bounds exchange requests, not inference
+    market_fetch_workers: int = 1                # parallel order-book/candle refresh before a batch
+    # Entry/exit policy. "action": act on the imitation answer, exactly like JEV.
+    # "expected_value" (laya only): act on the outcome-trained 5-minute forecast after spread,
+    # fees and slippage; the arithmetic is done in code, never by the model.
+    entry_policy: str = "action"
+    exit_policy: str = "action"
+    min_expected_edge_pct: Optional[float] = None  # None = threshold selected on held-out data, stored in the checkpoint
+    min_exit_edge_pct: float = 0.05              # SELL when the expected 5-minute hold return <= -this
+    portfolio_low_confidence_policy: str = "PAUSE_ENTRIES"  # PAUSE_ENTRIES | CONTINUE
 
 @dataclass
 class BotConfig:

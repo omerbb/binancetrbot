@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional
 from config import BotConfig, load_config, save_config, config_to_dict
 from core.binance_client import BinanceTrClient
 from core.market_data import MarketDataEngine
+from decision.contracts import MODEL_ENGINES, ENGINE_LABELS
 from core.market_scanner import MarketScanner
 from core.risk_manager import RiskManager
 from core.simulator import SimulatorEngine
@@ -47,9 +48,9 @@ class BinanceTrBot:
         self._decision_provider = decision_provider
         self._decision_controller = None
         self.config = config or load_config()
-        if self.config.decision.engine not in ("legacy", "jev"):
-            raise ValueError("decision.engine must be legacy or jev; no silent legacy fallback")
-        if self.config.decision.engine == "jev":
+        if self.config.decision.engine not in ("legacy",) + MODEL_ENGINES:
+            raise ValueError("decision.engine must be legacy, jev or laya; no silent legacy fallback")
+        if self.config.decision.engine in MODEL_ENGINES:
             from decision.contracts import validate_config
             validate_config(self.config)
             if self.config.trading.mode != "simulation":
@@ -107,7 +108,7 @@ class BinanceTrBot:
         )
         self.live_trader = LiveTraderEngine(
             self.client,
-            sync_on_start=(self.config.decision.engine != "jev"),
+            sync_on_start=(self.config.decision.engine not in MODEL_ENGINES),
             symbol=self.config.trading.symbol,
             max_open_positions=self.config.trading.max_open_positions,
         )
@@ -146,9 +147,9 @@ class BinanceTrBot:
         Yeni veya güncellenmiş yapılandırmayı çalışan tüm bot alt bileşenlerine uygular.
         """
         candidate = new_config or self.config
-        if candidate.decision.engine not in ("legacy", "jev"):
-            raise ValueError("decision.engine must be legacy or jev; no silent fallback")
-        if candidate.decision.engine == "jev":
+        if candidate.decision.engine not in ("legacy",) + MODEL_ENGINES:
+            raise ValueError("decision.engine must be legacy, jev or laya; no silent fallback")
+        if candidate.decision.engine in MODEL_ENGINES:
             from decision.contracts import validate_config
             validate_config(candidate)
             if candidate.trading.mode != "simulation":
@@ -160,7 +161,7 @@ class BinanceTrBot:
             self._decision_controller = None
         if new_config:
             self.config = new_config
-        if self.config.decision.engine == "jev":
+        if self.config.decision.engine in MODEL_ENGINES:
             from decision.contracts import validate_config
             validate_config(self.config)
 
@@ -287,7 +288,7 @@ class BinanceTrBot:
         if duration_minutes is not None:
             self.session_duration_seconds = duration_minutes * 60
 
-        if self.config.decision.engine == "jev":
+        if self.config.decision.engine in MODEL_ENGINES:
             self._jev().prepare_start()
 
         # Yeni oturum başlatıldığında tamamlanan işlemleri temizle (oturum raporlaması için)
@@ -304,8 +305,9 @@ class BinanceTrBot:
         self.current_round = 1
         self.round_start_time = self.session_start_time
         self.log(f"🚀 Bot başlatıldı! Mod: {self.config.trading.mode.upper()} | Parite: {self.config.trading.symbol} | Süre: {int(self.session_duration_seconds / 60)} dk")
-        if self.config.decision.engine == "jev":
-            self.log(f"JEV karar motoru: {self.config.decision.model} | Paper-only | kayıt: {self.config.decision.database_path}")
+        if self.config.decision.engine in MODEL_ENGINES:
+            model_name = self.config.decision.laya_checkpoint if self.config.decision.engine == "laya" else self.config.decision.model
+            self.log(f"{ENGINE_LABELS[self.config.decision.engine]} karar motoru: {model_name} | Paper-only | kayıt: {self.config.decision.database_path}")
         else:
             self.log("🔬 [1-DK BAŞLANGIÇ PİYASA KALİBRASYONU] Piyasadaki tüm TRY çiftlerinin ilk 60 saniyelik mikro-fiyat hareketleri taranıyor...")
 
@@ -317,7 +319,7 @@ class BinanceTrBot:
             return {"status": "already_stopped"}
 
         self.is_running = False
-        if self.config.decision.engine == "jev":
+        if self.config.decision.engine in MODEL_ENGINES:
             try:
                 self._jev().end_session()
             except Exception as exc:
@@ -325,7 +327,7 @@ class BinanceTrBot:
                 self.log(f"JEV journal finalization failed: {type(exc).__name__}; open exposure may remain")
         self.log("🛑 Bot durduruldu. Kalan açık test pozisyonları realize ediliyor...")
         try:
-            if self.config.decision.engine != "jev" and self.config.trading.mode == "simulation" and self.simulator.positions:
+            if self.config.decision.engine not in MODEL_ENGINES and self.config.trading.mode == "simulation" and self.simulator.positions:
                 self.force_close_all(reason="Test Oturumu Tamamlandı (Kapanış Realizasyonu)")
         except Exception as e:
             self.log(f"⚠️ Oturum sonu pozisyon kapatma hatası: {e}")
@@ -419,7 +421,7 @@ class BinanceTrBot:
         Kullanıcının hemen pozisyon açıp TP/SL'i izleyebilmesi için anında alım yapar.
         Sembol belirtilmemişse radarın bulduğu 1 numaralı en hareketli coini otomatik seçer.
         """
-        if self.config.decision.engine == "jev":
+        if self.config.decision.engine in MODEL_ENGINES:
             return self._jev().manual_buy(symbol, budget, reason)
         target_symbol = symbol
         if not target_symbol or target_symbol == "AUTO":
@@ -463,7 +465,7 @@ class BinanceTrBot:
         return None
 
     def force_close_all(self, reason: str = "Manuel Pozisyon Kapatma") -> list:
-        if self.config.decision.engine == "jev":
+        if self.config.decision.engine in MODEL_ENGINES:
             return self._jev().manual_close_all(reason)
         closed = []
         if self.config.trading.mode == "simulation":
@@ -503,7 +505,7 @@ class BinanceTrBot:
         return closed
 
     def close_single_position(self, position_id: str, reason: str = "Manuel Satış") -> Optional[Dict[str, Any]]:
-        if self.config.decision.engine == "jev":
+        if self.config.decision.engine in MODEL_ENGINES:
             return self._jev().manual_close(position_id, reason)
         mode = self.config.trading.mode
         if mode == "simulation":
@@ -545,7 +547,7 @@ class BinanceTrBot:
         2. Bütçe ve pozisyon limitine göre yeni işlem hakkı var mı bak
         3. 'auto_select_coin' aktifse en hareketli coinleri tara ve uygun olanı yakala
         """
-        if self.config.decision.engine == "jev":
+        if self.config.decision.engine in MODEL_ENGINES:
             self._jev().step()
             return
         self.step_count += 1
@@ -961,7 +963,7 @@ class BinanceTrBot:
 
         is_calibrating = (
             self.is_running
-            and self.config.decision.engine != "jev"
+            and self.config.decision.engine not in MODEL_ENGINES
             and self.session_start_time is not None 
             and (now < self.calibration_end_time)
             and not self.calibration_completed
@@ -971,7 +973,7 @@ class BinanceTrBot:
         round_elapsed = int(now - self.round_start_time) if (self.is_running and self.round_start_time > 0) else 0
 
         radar_pairs = getattr(self.scanner, "cached_top_pairs", []) or []
-        if not radar_pairs and hasattr(self, "scanner") and self.config.decision.engine != "jev":
+        if not radar_pairs and hasattr(self, "scanner") and self.config.decision.engine not in MODEL_ENGINES:
             radar_pairs = self.scanner.scan_top_active_pairs(limit=0, force_refresh=False)
 
         return {

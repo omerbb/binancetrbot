@@ -1,0 +1,10 @@
+unblocked candidates 10189, with a full 15-min forward path 9544
+median round-trip cost 0.287%
+hindsight: peak within 15 min clears costs in 38.1% of candidates; clears costs +0.3% in 18.4%
+mean max favorable +0.343%  mean max adverse -0.287%  hold 15 min net -0.258%
+
+TP/SL exit grid (mean net % | hit rate | n), 15-min timeout:
+  all unblocked        n= 9544 best TP2.0/SL0.3: -0.251% hit 21.2% | worst -0.284%
+  legacy BUY signal    n= 3463 best TP2.0/SL0.5: -0.239% hit 22.8% | worst -0.262%
+  Laya top 10% edge    n=  954 best TP2.0/SL0.3: -0.169% hit 19.0% | worst -0.196%
+  spread <= 0.05%      n= 2133 best TP2.0/SL0.3: -0.196% hit 20.3% | worst -0.218%

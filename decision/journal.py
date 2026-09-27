@@ -68,6 +68,7 @@ class DecisionJournal:
         self.db.execute("PRAGMA synchronous=FULL")
         self.db.executescript(DDL)
         self.db.commit()
+        self.policy_version = POLICY_VERSION  # The controller sets the engine's version.
 
     def create_run(self, metadata: dict, *, run_id=None) -> str:
         run_id = run_id or str(uuid.uuid4())
@@ -93,7 +94,7 @@ class DecisionJournal:
         with self.lock, self.db:
             self.db.execute("INSERT INTO decisions VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", (
                 decision_id, run_id, parent_id, stage, symbol, position_id, as_of, source,
-                dumps(request), digest(request), SCHEMA_VERSION, POLICY_VERSION))
+                dumps(request), digest(request), SCHEMA_VERSION, self.policy_version))
             self._event(run_id, decision_id, "decision_requested", {"stage": stage, "source": source}, as_of)
             if position_id:
                 self.db.execute("INSERT OR IGNORE INTO position_links VALUES(?,?,?)", (decision_id, run_id, position_id))

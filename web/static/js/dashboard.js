@@ -43,8 +43,11 @@ let isActionPending = false;
 async function fetchDecisions(data) {
   const panel = document.getElementById('jev-panel');
   if (!panel) return;
-  panel.style.display = data.decision_engine === 'jev' ? '' : 'none';
-  if (data.decision_engine !== 'jev') return;
+  const modelEngine = data.decision_engine === 'jev' || data.decision_engine === 'laya';
+  panel.style.display = modelEngine ? '' : 'none';
+  if (!modelEngine) return;
+  const engineTitle = document.getElementById('jev-title');
+  if (engineTitle) engineTitle.textContent = `${data.decision_engine === 'laya' ? 'Laya (yerel)' : 'JEV'} · Canlı Karar Akışı`;
   const decision = data.decision || {};
   const summary = document.getElementById('jev-summary');
   summary.textContent = `${data.is_running ? 'Çalışıyor' : 'Durduruldu'} · Portföy: ${decision.portfolio_policy || 'Karar bekleniyor'} · Model: ${decision.model || '-'} · Güven eşiği: %${((data.full_config?.decision?.min_action_confidence || 0) * 100).toFixed(0)}`;
@@ -55,12 +58,18 @@ async function fetchDecisions(data) {
     const tbody = document.getElementById('jev-decisions');
     tbody.replaceChildren();
     const labels = {portfolio:'Portföy', candidate:'Aday', position:'Pozisyon', prebuy:'Alım teyidi'};
-    const reasons = {low_confidence:'Güven eşiğinin altında (eski kayıt)', 'low_confidence:action':'Alım/satım kararı güven eşiğinin altında', 'low_confidence:allocation':'Tutar seçimi güven eşiğinin altında', 'low_confidence:prebuy_authorization':'Son alım teyidinin güveni eşik altında', 'low_confidence:portfolio_action':'Portföy kararı güven eşiğinin altında', inference_failed_or_invalid:'Yanıt doğrulanamadı', jev_portfolio_pause:'JEV yeni alımları durdurdu', session_entry_blackout:'Oturum sonuna yaklaşıldı', decision_expired:'Kararın süresi doldu'};
+    const reasons = {low_confidence:'Güven eşiğinin altında (eski kayıt)', 'low_confidence:action':'Alım/satım kararı güven eşiğinin altında', 'low_confidence:allocation':'Tutar seçimi güven eşiğinin altında', 'low_confidence:prebuy_authorization':'Son alım teyidinin güveni eşik altında', 'low_confidence:portfolio_action':'Portföy kararı güven eşiğinin altında', inference_failed_or_invalid:'Yanıt doğrulanamadı', jev_portfolio_pause:'Model yeni alımları durdurdu', forecast_unavailable:'Tahmin yok', 'forecast_or_quote_unavailable':'Tahmin veya fiyat yok', session_entry_blackout:'Oturum sonuna yaklaşıldı', decision_expired:'Kararın süresi doldu'};
     for (const item of result.decisions) {
       const row = document.createElement('tr');
       const notes = [item.validation_error, ...(item.reasons || []).map(r => reasons[r] || r)];
       if (item.allocation_confidence != null) notes.push(`Tutar: ${item.allocation_choice} · güven %${(item.allocation_confidence * 100).toFixed(0)}`);
       if (item.allocation_fallback) notes.push(`Düşük tutar güveni: ${item.allocation_fallback.budget_try.toFixed(2)} TL ile son teyide gönderildi`);
+      if (item.expected_value && item.expected_value.edge_pct != null) {
+        const ev = item.expected_value, fmt = v => (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '%';
+        notes.push(ev.side === 'hold'
+          ? `5 dk beklenen: ${fmt(ev.expected_mid_return_pct)} (satış eşiği ${fmt(ev.threshold_pct)})`
+          : `5 dk beklenen ${fmt(ev.expected_mid_return_pct)} − maliyet ${Number(ev.cost_pct).toFixed(2)}% = net ${fmt(ev.edge_pct)} (eşik ${fmt(ev.threshold_pct)})`);
+      }
       if (item.retry_count) notes.push(`Tutarsız yanıt için ${item.retry_count} yeniden deneme`);
       if (item.source !== 'model') notes.push(`Kaynak: ${item.source}`);
       if (item.execution === 'filled') notes.push('Sanal işlem gerçekleşti');
@@ -78,7 +87,7 @@ function updateUI(data) {
     const decisionBadge = document.getElementById('badge-decision');
     if (decisionBadge) {
         const decision = data.decision || {};
-        decisionBadge.textContent = data.decision_engine === 'jev' ? `JEV · ${decision.model || 'OpenRouter'} · paper` : 'Legacy karar motoru';
+        decisionBadge.textContent = data.decision_engine === 'laya' ? `Laya · ${decision.model || 'yerel'} · ${decision.scheduling || ''} · paper` : data.decision_engine === 'jev' ? `JEV · ${decision.model || 'OpenRouter'} · paper` : 'Legacy karar motoru';
         decisionBadge.title = decision.faulted ? 'Karar motoru durdu; kayıtları inceleyin.' : 'Model kararı ve uygulanan işlem ayrı kaydedilir.';
     }
   isRunning = data.is_running;

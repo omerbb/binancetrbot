@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-09-27 04:23:24",
+  "config": {
+    "trading": {
+      "mode": "simulation",
+      "symbol": "AUTO",
+      "budget_per_trade": 2000.0
+    },
+    "strategy": {
+      "active": "adaptive_regime",
+      "take_profit_pct": 1.2,
+      "stop_loss_pct": 0.85
+    },
+    "test": {
+      "duration_minutes": 3
+    }
+  },
+  "metrics": {
+    "initial_balance": 10000.0,
+    "final_equity": 10000.0,
+    "net_pnl": 0.0,
+    "net_pnl_pct": 0.0,
+    "total_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "win_rate": 0.0,
+    "gross_profit": 0,
+    "gross_loss": 0,
+    "profit_factor": 0.0,
+    "max_drawdown_pct": 0.0,
+    "max_drawdown_amount": 0.0,
+    "avg_trade_pnl": 0.0,
+    "avg_hold_time_seconds": 0.0,
+    "best_trade": 0.0,
+    "worst_trade": 0.0
+  },
+  "trades": [],
+  "open_positions": [],
+  "equity_curve": [
+    {
+      "time": 1790472011.7755866,
+      "equity": 10000.0
+    }
+  ],
+  "logs": [
+    "[04:20:11] 🚀 Bot başlatıldı! Mod: SIMULATION | Parite: AUTO | Süre: 3 dk",
+    "[04:20:11] Laya karar motoru: models/laya-bsjev | Paper-only | kayıt: data/laya_live_smoke.sqlite3",
+    "[04:23:24] ⏱️ Test süresi tamamlandı! Otomatik durduruluyor...",
+    "[04:23:24] 🛑 Bot durduruldu. Kalan açık test pozisyonları realize ediliyor..."
+  ]
+}

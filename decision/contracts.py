@@ -11,7 +11,18 @@ from typing import Any, Callable, Protocol
 
 SCHEMA_VERSION = "jev-trading-dataset-v1"
 POLICY_VERSION = "jev-spot-policy-v3"
+# Same questions and guardrails plus the outcome-trained forecast and expected-value policy.
+LAYA_POLICY_VERSION = "laya-spot-policy-v1"
 SENSITIVE_KEYS = {"api_key", "secret_key", "password", "authorization", "access_token", "cookie", "headers"}
+# Engines that route every discretionary decision through a DecisionProvider and the
+# shared controller/journal. They differ only in the provider behind the contract.
+MODEL_ENGINES = ("jev", "laya")
+ENGINE_LABELS = {"legacy": "Legacy", "jev": "JEV", "laya": "Laya"}
+LAYA_DEVICES = ("auto", "cpu", "cuda", "mps", "xpu")
+
+
+def policy_version_for(engine: str) -> str:
+    return LAYA_POLICY_VERSION if engine == "laya" else POLICY_VERSION
 
 
 def clean(value: Any) -> Any:
@@ -64,8 +75,36 @@ def finite_number(value: Any, minimum=None, maximum=None) -> float:
 
 def validate_config(config) -> None:
     d, t, s = config.decision, config.trading, config.strategy
-    if d.engine not in ("legacy", "jev"):
-        raise ValueError("decision.engine must be legacy or jev")
+    if d.engine not in ("legacy",) + MODEL_ENGINES:
+        raise ValueError("decision.engine must be legacy, jev or laya")
+    if d.engine == "laya":
+        if not isinstance(d.laya_checkpoint, str) or not d.laya_checkpoint.strip():
+            raise ValueError("decision.laya_checkpoint must name a local fine-tuned checkpoint directory")
+        if not isinstance(d.laya_device, str) or not (d.laya_device in LAYA_DEVICES or re.fullmatch(r"cuda:\d+", d.laya_device)):
+            raise ValueError("decision.laya_device must be auto, cpu, cuda, cuda:N, mps or xpu")
+        if d.laya_untrained_questions not in ("answer", "abstain"):
+            raise ValueError("decision.laya_untrained_questions must be answer or abstain")
+        for name, low, high in (("laya_max_len", 0, 8192), ("laya_threads", 0, 256), ("laya_batch_size", 1, 1024)):
+            v = getattr(d, name)
+            if isinstance(v, bool) or not isinstance(v, int) or not low <= v <= high:
+                raise ValueError(f"decision.{name} must be an integer in [{low}, {high}]")
+    for name in ("entry_policy", "exit_policy"):
+        if getattr(d, name) not in ("action", "expected_value"):
+            raise ValueError(f"decision.{name} must be action or expected_value")
+        if getattr(d, name) == "expected_value" and d.engine != "laya":
+            raise ValueError(f"decision.{name}=expected_value needs the laya engine's outcome-trained forecast")
+    if d.min_expected_edge_pct is not None:
+        finite_number(d.min_expected_edge_pct, -5, 5)
+    finite_number(d.min_exit_edge_pct, 0, 5)
+    if d.portfolio_low_confidence_policy not in ("PAUSE_ENTRIES", "CONTINUE"):
+        raise ValueError("decision.portfolio_low_confidence_policy must be PAUSE_ENTRIES or CONTINUE")
+    if not isinstance(d.batch_inference, bool):
+        raise ValueError("decision.batch_inference must be true or false")
+    finite_number(d.position_decision_interval_seconds, 0, 100000)
+    for name, low, high in (("max_symbol_evaluations_per_minute", 0, 100000), ("market_fetch_workers", 1, 32)):
+        v = getattr(d, name)
+        if isinstance(v, bool) or not isinstance(v, int) or not low <= v <= high:
+            raise ValueError(f"decision.{name} must be an integer in [{low}, {high}]")
     if d.endpoint != "https://openrouter.ai/api/v1/systemone":
         raise ValueError("Only the documented OpenRouter System One HTTPS endpoint is permitted")
     if not isinstance(d.database_path, str) or not d.database_path.strip():

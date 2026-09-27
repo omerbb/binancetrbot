@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run forward-only historical Jev paper trading. OpenRouter is the default provider."""
+"""Run forward-only historical paper trading with Jev (OpenRouter), local Laya or the test fixture."""
 import argparse
 import json
 import sys
@@ -14,14 +14,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="config.jev.example.yaml")
     parser.add_argument("--data", required=True, help="Chronological frame JSONL; see JEV_INTEGRATION.md")
-    parser.add_argument("--provider", choices=["openrouter", "fixture"], default="openrouter")
+    parser.add_argument("--provider", choices=["openrouter", "laya", "fixture"], default=None,
+                        help="Default: laya for engine=laya configs, otherwise openrouter")
     parser.add_argument("--database", help="Override the SQLite output path")
     parser.add_argument("--summary", help="Also write the summary to a JSON file")
     args = parser.parse_args()
     try:
         cfg = load_config(args.config)
         if args.database: cfg.decision.database_path = args.database
-        result = run_replay(cfg, args.data, provider=FixtureDecisionProvider() if args.provider == "fixture" else None)
+        provider = None
+        if args.provider == "fixture":
+            provider = FixtureDecisionProvider()
+        elif args.provider == "laya" or (args.provider is None and cfg.decision.engine == "laya"):
+            from decision.laya_provider import LayaDecisionProvider
+            cfg.decision.engine = "laya"
+            provider = LayaDecisionProvider(cfg.decision)
+        result = run_replay(cfg, args.data, provider=provider)
         text = json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False)
         if args.summary:
             path = Path(args.summary); path.parent.mkdir(parents=True, exist_ok=True); path.write_text(text, encoding="utf-8")

@@ -110,7 +110,8 @@ def main() -> int:
         work = Path(td) / 'project'
         shutil.copytree(source, work, ignore=shutil.ignore_patterns(
             '.git', '.venv', 'venv', '__pycache__', '.pytest_cache', 'reports',
-            '.env', 'config.yaml', 'config.live.yaml', 'config.test.yaml'))
+            '.env', 'config.yaml', 'config.live.yaml', 'config.test.yaml',
+            'models', 'logs', 'laya_dataset', 'laya_dataset_night', 'laya_night.sqlite3', 'replay'))
         try:
             os.chdir(work)
             sys.path.insert(0, str(work))

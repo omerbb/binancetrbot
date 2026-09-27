@@ -1,0 +1,15 @@
+04:20:11 [INFO] 🚀 Bot başlatıldı! Mod: SIMULATION | Parite: AUTO | Süre: 3 dk
+04:20:11 [INFO] Laya karar motoru: models/laya-bsjev | Paper-only | kayıt: data/laya_live_smoke.sqlite3
+04:23:24 [INFO] ⏱️ Test süresi tamamlandı! Otomatik durduruluyor...
+04:23:24 [INFO] 🛑 Bot durduruldu. Kalan açık test pozisyonları realize ediliyor...
+04:23:24 [INFO] 📊 Rapor kaydedildi: reports\test_run_20260927_042324.html
+=================================================================
+🤖 Binance TR Al-Sat Botu - CLI Oturumu
+⚙️ Çalışma Modu   : 🟢 SİMÜLASYON (TEST)
+📁 Yapılandırma   : data/replay/config.laya.live_smoke.yaml
+⏱️ Süre           : 3 Dakika
+📈 Parite / Radar : AUTO | Strateji: adaptive_regime
+=================================================================
+
+✅ Oturum tamamlandı!
+📊 Rapor Dosyası: reports\test_run_20260927_042324.html

@@ -18,6 +18,38 @@ def choice(instructions, criteria):
     return {"type": "choice", "instructions": COMMON + instructions, "criteria": criteria}
 
 
+FORECAST_ID = "forward_return_5m"
+FORECAST_HORIZON_SECONDS = 300
+# Ordinal mid-price change buckets (percent). Many TRY pairs do not trade at all for minutes,
+# so "unchanged" is its own level instead of being folded into a small rise or fall.
+FORECAST_LEVELS = (
+    ("fall more than 0.5 percent", float("-inf"), -0.5),
+    ("fall between 0.2 and 0.5 percent", -0.5, -0.2),
+    ("fall between 0.02 and 0.2 percent", -0.2, -0.02),
+    ("stay unchanged within 0.02 percent", -0.02, 0.02),
+    ("rise between 0.02 and 0.2 percent", 0.02, 0.2),
+    ("rise between 0.2 and 0.5 percent", 0.2, 0.5),
+    ("rise more than 0.5 percent", 0.5, float("inf")),
+)
+
+
+def forecast_level(mid_return_pct: float) -> int:
+    for level, (_, low, high) in enumerate(FORECAST_LEVELS):
+        if low <= mid_return_pct < high:
+            return level
+    return len(FORECAST_LEVELS) - 1
+
+
+def forecast_question():
+    """Outcome-supervised market forecast. Trained on observed 5-minute markouts, not on a
+    teacher, so a local model can learn when an entry clears fees and spread. Code, not the
+    model, turns the distribution into an expected net edge."""
+    return {"type": "score", "instructions": COMMON + (
+        "Forecast how the mid price of state.market.symbol changes over the next 5 minutes, using only the "
+        "supplied features. This is a market forecast, not a trading action."),
+        "criteria": [f"The mid price will {text} within 5 minutes" for text, _, _ in FORECAST_LEVELS]}
+
+
 def portfolio_questions():
     return {"portfolio_action": choice(
         "Given state.portfolio, state.btc_market and state.market_overview, choose the portfolio exposure policy now.",
@@ -26,7 +58,14 @@ def portfolio_questions():
          "FLATTEN": "Reduce all existing positions to cash now and pause new entries until the next assessment."})}
 
 
-def symbol_questions(has_position, allocation_fractions):
+def symbol_questions(has_position, allocation_fractions, *, forecast=False):
+    qs = _symbol_questions(has_position, allocation_fractions)
+    if forecast:
+        qs[FORECAST_ID] = forecast_question()
+    return qs
+
+
+def _symbol_questions(has_position, allocation_fractions):
     actions = ({"HOLD": "Retain the current quantity; no trade and no risk-reference reset.",
                 "SELL": "Sell the complete existing position at the current executable bid, including exits for risk or opportunity cost.",
                 "SELL_PARTIAL": "Sell the configured partial fraction of the existing quantity; keep the remainder.",
@@ -59,7 +98,14 @@ def symbol_questions(has_position, allocation_fractions):
     return qs
 
 
-def prebuy_questions():
+def prebuy_questions(*, forecast=False):
+    qs = _prebuy_questions()
+    if forecast:
+        qs[FORECAST_ID] = forecast_question()
+    return qs
+
+
+def _prebuy_questions():
     return {"prebuy_authorization": choice(
         "state.proposal contains a previously proposed BUY and budget. state.market and state.radar are refreshed. "
         "Reassess whether this exact proposal should be executed now, in light of the new data and state.guardrails.",

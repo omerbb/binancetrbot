@@ -1,0 +1,38 @@
+Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Fetching 5 files: 100%|██████████| 5/5 [00:00<00:00, 1575.38it/s]
+02:34:04 train items 7579 (dropped 0), calib 1472 (dropped 0), device cuda torch.bfloat16
+02:34:04 sequence tokens: max 998, mean 785
+02:34:04 trainable parameters 125.3M of 321.9M
+02:35:18 epoch 1 batch 100/948 soft-CE 1.5793 sigma 0.40 eta 33.5 min
+02:36:31 epoch 1 batch 200/948 soft-CE 1.3600 sigma 0.40 eta 32.4 min
+02:37:47 epoch 1 batch 300/948 soft-CE 1.3991 sigma 0.40 eta 31.5 min
+02:39:05 epoch 1 batch 400/948 soft-CE 1.3042 sigma 0.40 eta 30.6 min
+02:40:20 epoch 1 batch 500/948 soft-CE 1.3196 sigma 0.40 eta 29.4 min
+02:41:36 epoch 1 batch 600/948 soft-CE 1.2634 sigma 0.40 eta 28.1 min
+02:42:47 epoch 1 batch 700/948 soft-CE 1.3246 sigma 0.40 eta 26.7 min
+02:43:59 epoch 1 batch 800/948 soft-CE 1.2840 sigma 0.40 eta 25.3 min
+02:45:10 epoch 1 batch 900/948 soft-CE 1.2230 sigma 0.40 eta 24.0 min
+02:46:31 epoch 1 calib {"teacher": {"ce": 1.0222, "argmax_agreement": 0.7034, "n": 1052}, "outcome": {"ce": 1.8937, "argmax_agreement": 0.219, "n": 420}}
+02:47:42 epoch 2 batch 100/948 soft-CE 1.2746 sigma 0.25 eta 23.4 min
+02:48:50 epoch 2 batch 200/948 soft-CE 1.2238 sigma 0.25 eta 21.8 min
+02:49:58 epoch 2 batch 300/948 soft-CE 1.2534 sigma 0.25 eta 20.3 min
+02:51:01 epoch 2 batch 400/948 soft-CE 1.2119 sigma 0.25 eta 18.8 min
+02:52:07 epoch 2 batch 500/948 soft-CE 1.1937 sigma 0.25 eta 17.4 min
+02:53:14 epoch 2 batch 600/948 soft-CE 1.2308 sigma 0.25 eta 16.0 min
+02:54:21 epoch 2 batch 700/948 soft-CE 1.2431 sigma 0.25 eta 14.7 min
+02:55:29 epoch 2 batch 800/948 soft-CE 1.2973 sigma 0.25 eta 13.4 min
+02:56:37 epoch 2 batch 900/948 soft-CE 1.3095 sigma 0.25 eta 12.2 min
+02:57:49 epoch 2 calib {"teacher": {"ce": 0.9817, "argmax_agreement": 0.7633, "n": 1052}, "outcome": {"ce": 1.8937, "argmax_agreement": 0.219, "n": 420}}
+02:58:58 epoch 3 batch 100/948 soft-CE 1.2338 sigma 0.10 eta 10.6 min
+03:00:09 epoch 3 batch 200/948 soft-CE 1.2162 sigma 0.10 eta 9.3 min
+03:01:20 epoch 3 batch 300/948 soft-CE 1.2144 sigma 0.10 eta 8.0 min
+03:02:34 epoch 3 batch 400/948 soft-CE 1.2463 sigma 0.10 eta 6.8 min
+03:03:48 epoch 3 batch 500/948 soft-CE 1.2083 sigma 0.10 eta 5.6 min
+03:05:03 epoch 3 batch 600/948 soft-CE 1.2063 sigma 0.10 eta 4.3 min
+03:06:19 epoch 3 batch 700/948 soft-CE 1.1781 sigma 0.10 eta 3.1 min
+03:07:35 epoch 3 batch 800/948 soft-CE 1.2435 sigma 0.10 eta 1.8 min
+03:08:50 epoch 3 batch 900/948 soft-CE 1.1897 sigma 0.10 eta 0.6 min
+03:10:10 epoch 3 calib {"teacher": {"ce": 0.9699, "argmax_agreement": 0.7728, "n": 1052}, "outcome": {"ce": 1.8857, "argmax_agreement": 0.2238, "n": 420}}
+03:10:11 best epoch 3 (calib mean CE 1.2312)
+03:10:54 temperatures {'choice': 1.0959739685058594, 'score': 1.0927629470825195, 'noul': 1.0} buckets {'choice:3-5': 1.2056649923324585, 'choice:6-10': 0.9957483410835266, 'score:3-5': 1.0759011507034302, 'score:6-10': 1.1208163499832153}
+03:10:56 saved models\laya-bsjev
+exit 0

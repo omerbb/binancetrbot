@@ -1,0 +1,282 @@
+{
+  "encoder": "jhu-clsp/mmBERT-base",
+  "head_layers": 2,
+  "max_len": 1024,
+  "head_max_len": 256,
+  "max_prefixes": 6,
+  "act_costs": {
+    "escalate": 0.5
+  },
+  "cost_wrong_act": 3.0,
+  "amp_dtype": "bf16",
+  "model_name": "laya-bsjev",
+  "temperature": [
+    1.0959739685058594,
+    1.0927629470825195,
+    1.0
+  ],
+  "temperature_by_options": {
+    "choice:3-5": 1.2056649923324585,
+    "choice:6-10": 0.9957483410835266,
+    "score:3-5": 1.0759011507034302,
+    "score:6-10": 1.1208163499832153
+  },
+  "training": {
+    "updates": 15987,
+    "epochs_completed": 4,
+    "hours": 4.97,
+    "world_size": 1,
+    "fine_tuned_from_checkpoint": false
+  },
+  "fine_tuned": true,
+  "base_model": "convaiinnovations/laya/multilingual",
+  "base_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+  "bot_state_format": "laya-compact-v1",
+  "bot_question_coverage": {
+    "1d2deb8eee30d86e": {
+      "question_id": "portfolio_action",
+      "stages": [
+        "portfolio"
+      ],
+      "examples": 122,
+      "supervision": "teacher"
+    },
+    "6e24dbbf8de35589": {
+      "question_id": "action",
+      "stages": [
+        "candidate"
+      ],
+      "examples": 1052,
+      "supervision": "teacher"
+    },
+    "b4a7c2cc7869ef1a": {
+      "question_id": "allocation",
+      "stages": [
+        "candidate"
+      ],
+      "examples": 1052,
+      "supervision": "teacher"
+    },
+    "2266c3965aafb2c4": {
+      "question_id": "reason_code",
+      "stages": [
+        "candidate"
+      ],
+      "examples": 1052,
+      "supervision": "teacher"
+    },
+    "dca95fe538f7423b": {
+      "question_id": "regime",
+      "stages": [
+        "candidate"
+      ],
+      "examples": 1052,
+      "supervision": "teacher"
+    },
+    "f353d228d353d731": {
+      "question_id": "setup_quality",
+      "stages": [
+        "candidate"
+      ],
+      "examples": 1052,
+      "supervision": "teacher"
+    },
+    "3e203407cce73289": {
+      "question_id": "forward_return_5m",
+      "stages": [
+        "candidate",
+        "prebuy"
+      ],
+      "examples": 2195,
+      "supervision": "outcome"
+    },
+    "075bdde18ec8d97e": {
+      "question_id": "prebuy_authorization",
+      "stages": [
+        "prebuy"
+      ],
+      "examples": 2,
+      "supervision": "teacher"
+    }
+  },
+  "bot_forecast": {
+    "question_id": "forward_return_5m",
+    "question_key": "3e203407cce73289",
+    "horizon_seconds": 300,
+    "levels": [
+      {
+        "text": "fall more than 0.5 percent",
+        "low_pct": null,
+        "high_pct": -0.5
+      },
+      {
+        "text": "fall between 0.2 and 0.5 percent",
+        "low_pct": -0.5,
+        "high_pct": -0.2
+      },
+      {
+        "text": "fall between 0.02 and 0.2 percent",
+        "low_pct": -0.2,
+        "high_pct": -0.02
+      },
+      {
+        "text": "stay unchanged within 0.02 percent",
+        "low_pct": -0.02,
+        "high_pct": 0.02
+      },
+      {
+        "text": "rise between 0.02 and 0.2 percent",
+        "low_pct": 0.02,
+        "high_pct": 0.2
+      },
+      {
+        "text": "rise between 0.2 and 0.5 percent",
+        "low_pct": 0.2,
+        "high_pct": 0.5
+      },
+      {
+        "text": "rise more than 0.5 percent",
+        "low_pct": 0.5,
+        "high_pct": null
+      }
+    ],
+    "level_values_pct": [
+      -0.8541940251527955,
+      -0.3148510970932204,
+      -0.11292964134226488,
+      -0.0002717327655096802,
+      0.10793612147896492,
+      0.32224273102084844,
+      0.9902764100053791
+    ]
+  },
+  "bot_dataset": {
+    "version": "laya-bsjev-dataset-v1",
+    "sha256": "ee99847bf492a37c3de5e4b0d22ba417a93adff0ae0059af4f24350724ac0725",
+    "train_splits": [
+      "train"
+    ],
+    "rows_used": 7579,
+    "sources": [
+      {
+        "path": "C:\\Users\\xxtra\\OneDrive\\Desktop\\borsaprojesi\\binancetrbot_jev_openrouter\\binancetrbot-jev\\data\\jev_demo.sqlite3",
+        "runs": 10,
+        "decisions": 1657,
+        "sha256": "90bfdb2136858374ea60478f40fbda23d243361f86e0c0507ee0c53467472370"
+      },
+      {
+        "path": "C:\\Users\\xxtra\\OneDrive\\Desktop\\borsaprojesi\\binancetrbot_jev_openrouter\\binancetrbot-jev\\verification\\jev_audit_20260926\\real_jev.sqlite3",
+        "runs": 1,
+        "decisions": 14,
+        "sha256": "97a488cbb4ab86cb90558289f79865dda0805e52896e481afd4f370dea684ae5"
+      },
+      {
+        "path": "C:\\Users\\xxtra\\OneDrive\\Desktop\\borsaprojesi\\binancetrbot_jev_openrouter\\binancetrbot-jev\\verification\\jev_fix_20260926\\real_jev.sqlite3",
+        "runs": 1,
+        "decisions": 12,
+        "sha256": "7b787132cbb3d4bcadd0fca363cf62af630019b37b82cd95179f617fdd939372"
+      },
+      {
+        "path": "C:\\Users\\xxtra\\OneDrive\\Desktop\\borsaprojesi\\binancetrbot_jev_openrouter\\binancetrbot-jev\\verification\\jev_fix_20260926\\real_jev_final.sqlite3",
+        "runs": 1,
+        "decisions": 8,
+        "sha256": "ba0739cc53dffca72d66d6bbfefdec12ee922db8c066bc7fa67ba7c2354c0b18"
+      },
+      {
+        "path": "C:\\Users\\xxtra\\OneDrive\\Desktop\\borsaprojesi\\binancetrbot_jev_openrouter\\binancetrbot-jev\\data\\fixture_demo.sqlite3",
+        "runs": 0,
+        "decisions": 0,
+        "sha256": "c5eae77ce5d0ae4fc2fb74e180e146c56ec0398138232aa00f614407d80afa53"
+      }
+    ]
+  },
+  "bot_training": {
+    "base": "convaiinnovations/laya",
+    "subfolder": "multilingual",
+    "train_splits": "train",
+    "epochs": 3,
+    "micro_batch": 8,
+    "grad_accum": 4,
+    "lr_encoder": 2.5e-05,
+    "lr_head": 0.0001,
+    "outcome_weight": 1.0,
+    "max_len": 1024,
+    "head_max_len": 256,
+    "group_size": 4,
+    "sigma_start": 0.4,
+    "sigma_end": 0.1,
+    "no_grad_checkpointing": false,
+    "unfreeze_embeddings": false,
+    "seed": 7,
+    "limit": 0,
+    "best_epoch": 3,
+    "history": [
+      {
+        "epoch": 1,
+        "calib": {
+          "teacher": {
+            "ce": 1.0222,
+            "argmax_agreement": 0.7034,
+            "n": 1052
+          },
+          "outcome": {
+            "ce": 1.8937,
+            "argmax_agreement": 0.219,
+            "n": 420
+          }
+        },
+        "calib_mean_ce": 1.2709,
+        "elapsed_min": 12.4
+      },
+      {
+        "epoch": 2,
+        "calib": {
+          "teacher": {
+            "ce": 0.9817,
+            "argmax_agreement": 0.7633,
+            "n": 1052
+          },
+          "outcome": {
+            "ce": 1.8937,
+            "argmax_agreement": 0.219,
+            "n": 420
+          }
+        },
+        "calib_mean_ce": 1.2419,
+        "elapsed_min": 23.7
+      },
+      {
+        "epoch": 3,
+        "calib": {
+          "teacher": {
+            "ce": 0.9699,
+            "argmax_agreement": 0.7728,
+            "n": 1052
+          },
+          "outcome": {
+            "ce": 1.8857,
+            "argmax_agreement": 0.2238,
+            "n": 420
+          }
+        },
+        "calib_mean_ce": 1.2312,
+        "elapsed_min": 36.1
+      }
+    ],
+    "minutes": 36.9,
+    "device": "NVIDIA GeForce RTX 4070 Laptop GPU",
+    "embeddings_frozen": true
+  },
+  "bot_policy": {
+    "entry_min_expected_edge_pct": 0.05,
+    "edge_found_on_calibration": false,
+    "selected_on": "calib",
+    "calib_at_threshold": null,
+    "test_at_threshold": {
+      "trades": 0
+    },
+    "horizon_seconds": 300,
+    "written_at": 1790468678.297495,
+    "source_report": "reports/laya_eval_v1.json"
+  }
+}

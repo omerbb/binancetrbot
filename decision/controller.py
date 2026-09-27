@@ -1,7 +1,9 @@
-"""Jev-owned discretionary decisions, deterministic guardrails, recorded paper fills.
+"""Model-owned discretionary decisions, deterministic guardrails, recorded paper fills.
 
-The legacy bot.step is NEVER entered when decision.engine=jev. Legacy thresholds and
-signals are input features only (except explicit hard safety boundaries below).
+The legacy bot.step is NEVER entered when decision.engine is jev or laya. Legacy thresholds
+and signals are input features only (except explicit hard safety boundaries below).
+The engines differ only in the DecisionProvider; a local provider additionally unlocks
+batched evaluation and the outcome-trained expected-value policy.
 """
 from __future__ import annotations
 
@@ -10,15 +12,19 @@ import math
 import queue
 import threading
 import time
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from typing import Any
 
-from decision.contracts import (SCHEMA_VERSION, POLICY_VERSION, clean, code_digest, digest,
+from decision.contracts import (SCHEMA_VERSION, ENGINE_LABELS, clean, code_digest, digest, policy_version_for,
                                 public_config, validate_config, validate_response, dumps)
 from decision.journal import DecisionJournal
-from decision.openrouter import OpenRouterJevProvider, ProviderError
+from decision.openrouter import ProviderError
+from decision.expected_value import entry_edge_pct
+from decision.providers import make_provider
 from decision.inference import InferenceRunner
-from decision.questions import portfolio_questions, symbol_questions, prebuy_questions
+from decision.questions import FORECAST_ID, portfolio_questions, symbol_questions, prebuy_questions
 
 
 class JevController:
@@ -27,9 +33,17 @@ class JevController:
         self.bot = bot
         self.cfg = copy.deepcopy(bot.config)
         self.clock = bot._clock
-        self.provider = provider or OpenRouterJevProvider(self.cfg.decision)
+        self.engine = self.cfg.decision.engine
+        self.label = ENGINE_LABELS.get(self.engine, self.engine)
+        self.policy_version = policy_version_for(self.engine)
+        self.forecast = self.engine == "laya"  # the outcome-trained forecast question rides along
+        self.provider = provider or make_provider(self.cfg.decision)
         self.inference = InferenceRunner(self.provider)
         self.store = DecisionJournal(self.cfg.decision.database_path, clock=self.clock)
+        self.store.policy_version = self.policy_version
+        self.entry_edge_threshold = self.cfg.decision.min_expected_edge_pct
+        self.threshold_source = "configuration" if self.entry_edge_threshold is not None else None
+        self.evaluation_times = deque()
         self.lock = threading.RLock()
         self.run_id = None
         self.finished = False
@@ -52,14 +66,19 @@ class JevController:
     def _ensure_run(self):
         if self.run_id is not None and not self.finished:
             return
-        metadata = {"schema_version": SCHEMA_VERSION, "policy_version": POLICY_VERSION,
-                    "code_sha256": code_digest(), "config_sha256": self.config_hash,
+        run_metadata = getattr(self.provider, "run_metadata", None)
+        metadata = {"schema_version": SCHEMA_VERSION, "policy_version": self.policy_version,
+                    "engine": self.engine, "code_sha256": code_digest(), "config_sha256": self.config_hash,
                     "configuration": public_config(self.cfg), "provider": self.provider.name,
                     "requested_model": self.provider.model, "environment": self.environment,
                     "fixture": bool(getattr(self.provider, "is_fixture", False)),
                     "execution": "paper_only", "fill_model": "ask_buy_bid_sell_with_configured_fees_slippage",
                     "confidence_is_profit_probability": False,
                     "outcome_attribution": "observational_not_causal",
+                    "scheduling": "batched" if self._batched() else "sequential",
+                    "entry_policy": self.cfg.decision.entry_policy, "exit_policy": self.cfg.decision.exit_policy,
+                    "entry_min_expected_edge_pct": self.entry_edge_threshold, "entry_threshold_source": self.threshold_source,
+                    **(clean(run_metadata()) if callable(run_metadata) else {}),
                     "starting_portfolio": self._portfolio(), **self.extra_metadata}
         self.run_id = self.store.create_run(metadata)
         self.finished = False
@@ -78,6 +97,7 @@ class JevController:
             if self.cfg.trading.mode != "simulation":
                 raise ValueError("JEV execution is paper/replay only until live fills and commissions are reconciled; no live orders are enabled.")
             self.provider.check_ready()
+            self._resolve_entry_threshold()
             if self.faulted:
                 raise ValueError("Decision controller faulted; inspect journal and restart the process.")
             if self.finished and self.bot.simulator.positions:
@@ -95,14 +115,41 @@ class JevController:
         except (KeyError, TypeError, ValueError):
             return False
 
-    def _quote(self, symbol, *, force=False):
-        engine = self.bot.get_engine_for(symbol)
+    def _resolve_entry_threshold(self):
+        """An expected-value entry needs a threshold chosen on held-out data or set explicitly."""
+        if self.cfg.decision.entry_policy != "expected_value" or self.cfg.decision.min_expected_edge_pct is not None:
+            return
+        defaults = getattr(self.provider, "policy_defaults", dict)()
+        value = defaults.get("entry_min_expected_edge_pct")
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+            raise ValueError("expected_value entry policy needs decision.min_expected_edge_pct or a checkpoint "
+                             "calibrated by tools/laya_evaluate.py --write-policy")
+        self.entry_edge_threshold = float(value)
+        self.threshold_source = "checkpoint_calibration_split"
+
+    def _batched(self):
+        return bool(self.cfg.decision.batch_inference and callable(getattr(self.provider, "evaluate_batch", None)))
+
+    def _fetch(self, symbol, force=False):
+        """Order book + candle refresh. Thread-safe per symbol; never touches the journal."""
         try:
-            snap = engine.update_market_state(force=force)
+            return self.bot.get_engine_for(symbol).update_market_state(force=force), None
         except Exception as exc:
-            if self.run_id:
-                self.store.event(self.run_id, None, "market_data_error", {"symbol": symbol, "error_type": type(exc).__name__})
-            snap = None
+            return None, type(exc).__name__
+
+    def _prefetch(self, symbols):
+        for symbol in symbols:
+            self.bot.get_engine_for(symbol)  # engines are created on the controller thread
+        workers = min(self.cfg.decision.market_fetch_workers, len(symbols))
+        if workers <= 1 or self.environment == "historical_replay":
+            return {symbol: self._fetch(symbol) for symbol in symbols}
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="market-prefetch") as pool:
+            return dict(zip(symbols, pool.map(self._fetch, symbols)))
+
+    def _quote(self, symbol, *, force=False, prefetched=None):
+        snap, error = prefetched if prefetched is not None else self._fetch(symbol, force)
+        if error and self.run_id:
+            self.store.event(self.run_id, None, "market_data_error", {"symbol": symbol, "error_type": error})
         market = dict(snap or {"symbol": symbol, "quote_valid": False, "features_ready": False,
                                "data_quality_reasons": ["missing_market_data"]})
         market["symbol"] = symbol
@@ -172,7 +219,7 @@ class JevController:
 
     def _state(self, symbol=None, market=None, position=None, *, proposal=None):
         now = self.clock()
-        state = {"as_of": now, "schema_version": SCHEMA_VERSION, "policy_version": POLICY_VERSION,
+        state = {"as_of": now, "schema_version": SCHEMA_VERSION, "policy_version": self.policy_version,
                  "portfolio": self._portfolio(), "costs": {"fee_rate_pct": self.cfg.trading.fee_rate_pct,
                  "slippage_bps": self.cfg.decision.slippage_bps},
                  "session": {"start_time": self.bot.session_start_time,
@@ -265,7 +312,17 @@ class JevController:
 
     def _infer(self, state, questions, decision, evaluation):
         task = self.inference.submit(state, questions, decision["deadline"])
+        return self._await(task, [decision], evaluation, position=state.get("position"))
+
+    def _infer_many(self, requests, decisions):
+        task = self.inference.submit_batch(requests, min(d["deadline"] for d in decisions))
+        return self._await(task, decisions, 1)
+
+    def _await(self, task, decisions, evaluation, *, position=None):
         next_safety = time.monotonic() + .25
+        # The batch is cancelled as soon as its most urgent decision can no longer be applied.
+        urgent = min(decisions, key=lambda d: d["deadline"])
+        extra = {"batch_size": len(decisions)} if len(decisions) > 1 else {}
 
         def drain_attempts():
             while True:
@@ -273,13 +330,14 @@ class JevController:
                     attempt = task.attempts.get_nowait()
                 except queue.Empty:
                     break
-                self.store.event(decision["run_id"], decision["id"], "inference_attempt",
-                                 {**attempt, "evaluation": evaluation})
+                for decision in decisions:
+                    self.store.event(decision["run_id"], decision["id"], "inference_attempt",
+                                     {**attempt, **extra, "evaluation": evaluation})
 
         try:
             while not task.done.wait(.05):
                 drain_attempts()
-                block = self._decision_block(decision)
+                block = self._decision_block(urgent)
                 if block or task.cancelled.is_set():
                     raise ProviderError(block or "inference_cancelled")
                 if time.monotonic() >= next_safety:
@@ -287,7 +345,6 @@ class JevController:
                     # execution and journal operations stay on this controller thread.
                     if not self._safety(force=True):
                         raise ProviderError("hard_safety_override")
-                    position = state.get("position")
                     if position and position["position_id"] not in self.bot.simulator.positions:
                         raise ProviderError("position_closed_by_safety")
                     next_safety = time.monotonic() + .25
@@ -300,18 +357,68 @@ class JevController:
         finally:
             if not task.done.is_set():
                 task.cancelled.set()
-                self.store.event(decision["run_id"], decision["id"], "inference_abandoned",
-                                 {"late_response_will_be_discarded": True, "evaluation": evaluation})
+                for decision in decisions:
+                    self.store.event(decision["run_id"], decision["id"], "inference_abandoned",
+                                     {"late_response_will_be_discarded": True, "evaluation": evaluation, **extra})
 
-    def _decide(self, stage, state, questions, *, parent_id=None):
+    def _new_decision(self, stage, state, questions, *, parent_id=None):
         source = "fixture" if getattr(self.provider, "is_fixture", False) else "model"
         did = self.store.begin_decision(self.run_id, stage, state, questions, self.provider.model,
                                         source=source, parent_id=parent_id, horizons=self.cfg.decision.outcome_horizons_seconds)
         started = time.monotonic()
-        result = {"id": did, "run_id": self.run_id, "as_of": state["as_of"], "state": state,
-                  "valid": False, "response": None, "error": None,
-                  "deadline": started + max(0, self.cfg.decision.max_decision_age_seconds
-                                            - max(0, self.clock() - state["as_of"]))}
+        return {"id": did, "run_id": self.run_id, "as_of": state["as_of"], "state": state,
+                "valid": False, "response": None, "error": None,
+                "deadline": started + max(0, self.cfg.decision.max_decision_age_seconds
+                                          - max(0, self.clock() - state["as_of"]))}
+
+    def _record_response(self, decision, questions, response, evaluation, started, extra=None):
+        validation_error = None
+        try:
+            decision["response"] = validate_response(response, questions)
+            decision["valid"] = True
+            decision["error"] = None
+        except (ValueError, TypeError, KeyError) as exc:
+            validation_error = str(exc)
+            decision["error"] = "invalid_response_schema"
+        self.store.event(self.run_id, decision["id"], "model_response", {"raw": clean(response), "valid": decision["valid"],
+                         "validation_error": validation_error, "provider": self.provider.name,
+                         "requested_model": self.provider.model, "evaluation": evaluation,
+                         "latency_ms": round((time.monotonic() - started) * 1000, 3), **(extra or {})})
+        return validation_error
+
+    def _decide_batch(self, prepared):
+        """Journal every request first, then ONE provider call for all of them."""
+        decisions = [self._new_decision(p["stage"], p["state"], p["questions"]) for p in prepared]
+        live = []
+        for decision, p in zip(decisions, prepared):
+            block = self._decision_block(decision)
+            if block:
+                decision["error"] = block
+                self.store.event(self.run_id, decision["id"], "inference_failed", {"error_code": block, "fallback": "WAIT_OR_HOLD"})
+            else:
+                live.append((decision, p["questions"]))
+        if live:
+            started = time.monotonic()
+            try:
+                responses = self._infer_many([(d["state"], q) for d, q in live], [d for d, _ in live])
+            except (ProviderError, ValueError) as exc:
+                responses = [exc] * len(live)
+            for (decision, questions), response in zip(live, responses):
+                if isinstance(response, Exception):
+                    decision["error"] = getattr(response, "code", type(response).__name__)
+                    self.store.event(self.run_id, decision["id"], "inference_failed", {"error_code": decision["error"], "fallback": "WAIT_OR_HOLD"})
+                    continue
+                self._record_response(decision, questions, response, 1, started, {"batch_size": len(live)})
+        if decisions:
+            last, p = decisions[-1], prepared[-1]
+            self.last_decision = {"id": last["id"], "stage": p["stage"], "symbol": p["symbol"],
+                                  "valid": last["valid"], "error": last["error"], "batch_size": len(decisions)}
+        return decisions
+
+    def _decide(self, stage, state, questions, *, parent_id=None):
+        result = self._new_decision(stage, state, questions, parent_id=parent_id)
+        did = result["id"]
+        started = time.monotonic()
         for evaluation in range(2):
             try:
                 block = self._decision_block(result)
@@ -324,19 +431,9 @@ class JevController:
                 result["error"] = getattr(exc, "code", type(exc).__name__)
                 self.store.event(self.run_id, did, "inference_failed", {"error_code": result["error"], "fallback": "WAIT_OR_HOLD"})
                 break
-            validation_error = None
-            try:
-                result["response"] = validate_response(response, questions)
-                result["valid"] = True
-                result["error"] = None
-            except (ValueError, TypeError, KeyError) as exc:
-                validation_error = str(exc)
-                result["error"] = "invalid_response_schema"
-            self.store.event(self.run_id, did, "model_response", {"raw": clean(response), "valid": result["valid"],
-                             "validation_error": validation_error, "provider": self.provider.name,
-                             "requested_model": self.provider.model, "evaluation": evaluation + 1,
-                             "latency_ms": round((time.monotonic() - started) * 1000, 3)})
-            if result["valid"] or evaluation == 1:
+            validation_error = self._record_response(result, questions, response, evaluation + 1, started)
+            # A deterministic local model would return the identical answer again.
+            if result["valid"] or evaluation == 1 or getattr(self.provider, "deterministic", False):
                 break
             if self._decision_block(result):
                 break
@@ -398,7 +495,7 @@ class JevController:
             self.store.position_fill(self.run_id, position_id, trade, remaining)
             if remaining == 0:
                 self.bot.risk_manager.record_trade_exit(symbol, is_loss=trade["net_pnl"] < 0)
-            self.bot.log(f"JEV kayıtlı {source} satış [{symbol}]: {trade['net_pnl']:+.2f} TL | karar={decision['id']}")
+            self.bot.log(f"{self.label} kayıtlı {source} satış [{symbol}]: {trade['net_pnl']:+.2f} TL | karar={decision['id']}")
         else:
             self.store.event(self.run_id, decision["id"], "execution_result", {"status": "rejected", "reason": "paper_engine_rejected"})
         return trade
@@ -420,7 +517,7 @@ class JevController:
         price = market["ask"] * (1 + self.cfg.decision.slippage_bps / 10000)
         self.store.event(self.run_id, decision["id"], "execution_intent", {"side": "BUY", "symbol": symbol,
                          "budget_try": budget, "price": price, "quote": market, "fill_source": "paper_quote_model"})
-        pos = self.bot.simulator.buy(symbol, price, budget, reason=f"{'OPERATOR' if manual else 'JEV'} decision={decision['id']}")
+        pos = self.bot.simulator.buy(symbol, price, budget, reason=f"{'OPERATOR' if manual else self.label.upper()} decision={decision['id']}")
         if pos:
             self.bot.simulator.all_orders[-1].update(decision_id=decision["id"], run_id=self.run_id, decision_source="operator" if manual else ("fixture" if getattr(self.provider, "is_fixture", False) else "model"))
             pos.update(entry_decision_id=parent_id or decision["id"], entry_execution_decision_id=decision["id"], decision_run_id=self.run_id)
@@ -433,7 +530,7 @@ class JevController:
                 self.store.event(self.run_id, parent_id, "execution_result", {"status": "filled", "child_decision_id": decision["id"],
                                  "position_id": pos["position_id"], "fill": copy.deepcopy(self.bot.simulator.all_orders[-1]),
                                  "fill_source": "paper_quote_model", "attribution": "prebuy_child_execution"})
-            self.bot.log(f"JEV kayıtlı alış [{symbol}]: {budget:.2f} TL | karar={decision['id']}")
+            self.bot.log(f"{self.label} kayıtlı alış [{symbol}]: {budget:.2f} TL | karar={decision['id']}")
         else:
             self.store.event(self.run_id, decision["id"], "execution_result", {"status": "rejected", "reason": "paper_engine_rejected"})
         return pos
@@ -477,10 +574,10 @@ class JevController:
             self.radar = {symbol: {"symbol": symbol, "source": "single_symbol_no_24h_radar", "updated_at": self.clock()}}
         return sorted(self.radar)
 
-    def _evaluate_symbol(self, symbol):
+    def _prepare_symbol(self, symbol, *, prefetched=None):
         now = self.clock()
         self.last_evaluated[symbol] = now
-        market = self._quote(symbol)
+        market = self._quote(symbol, prefetched=prefetched)
         # Single-symbol mode still records actual micro-ticks instead of all-zero momentum.
         if self._fresh(market) and self.radar.get(symbol, {}).get("source") == "single_symbol_no_24h_radar":
             self.bot.scanner.tracker.record_tick(symbol, market["bid"], timestamp=self.clock())
@@ -488,12 +585,72 @@ class JevController:
         pos = next((p for p in self.bot.simulator.positions.values() if p["symbol"] == symbol), None)
         state = self._state(symbol, market, pos)
         self.bot.latest_snapshot = state["market"]
-        questions = symbol_questions(pos is not None, self.cfg.decision.allocation_fractions)
-        dec = self._decide("position" if pos else "candidate", state, questions)
+        questions = symbol_questions(pos is not None, self.cfg.decision.allocation_fractions, forecast=self.forecast)
+        return {"symbol": symbol, "market": market, "pos": pos, "state": state, "questions": questions,
+                "stage": "position" if pos else "candidate"}
+
+    def _evaluate_symbol(self, symbol):
+        prepared = self._prepare_symbol(symbol)
+        dec = self._decide(prepared["stage"], prepared["state"], prepared["questions"])
+        self._apply_symbol_decision(prepared, dec)
+
+    def _uses_edge(self, position):
+        d = self.cfg.decision
+        return d.exit_policy == "expected_value" if position else d.entry_policy == "expected_value"
+
+    def _edge(self, decision, *, side):
+        """(edge_pct, failure_reason, detail). Entry: expected net result of buying at the ask and
+        selling at the bid 5 minutes later. Hold: expected mid change of keeping a position."""
+        if not decision["valid"]:
+            return None, "inference_failed_or_invalid", {}
+        block = self._decision_block(decision)
+        if block:
+            return None, block, {}
+        answer = decision["response"]["answers"].get(FORECAST_ID) or {}
+        expected = answer.get("expected_mid_return_pct")
+        detail = {"side": side, "expected_mid_return_pct": expected, "forecast_probabilities": answer.get("probabilities"),
+                  "forecast_trained_examples": answer.get("trained_examples")}
+        if side == "hold":
+            if not isinstance(expected, (int, float)) or isinstance(expected, bool) or not math.isfinite(expected):
+                return None, "forecast_unavailable", detail
+            return expected, None, {**detail, "edge_pct": expected}
+        edge, costs = entry_edge_pct(expected, decision["state"].get("market"), self.cfg.trading.fee_rate_pct,
+                                     self.cfg.decision.slippage_bps)
+        detail.update(costs=costs, edge_pct=edge)
+        if edge is None:
+            return None, "forecast_or_quote_unavailable", detail
+        return edge, None, detail
+
+    def _policy_action(self, decision, position):
+        """The executable action and, on failure, the fallback reason. Guardrails apply afterwards."""
+        default = "HOLD" if position else "WAIT"
+        if not self._uses_edge(position):
+            action, override = self._answer(decision, "action", default)
+            return action, override
+        side = "hold" if position else "entry"
+        edge, reason, detail = self._edge(decision, side=side)
+        if reason:
+            return default, reason
+        if position:
+            threshold = -self.cfg.decision.min_exit_edge_pct
+            action = "SELL" if edge <= threshold else "HOLD"
+        else:
+            threshold = self.entry_edge_threshold
+            action = "BUY" if edge >= threshold else "WAIT"
+        self.store.event(self.run_id, decision["id"], "expected_value_assessment",
+                         {**detail, "threshold_pct": threshold, "threshold_source": self.threshold_source if not position else "configuration",
+                          "action": action, "model_action_answer_is_diagnostic": True})
+        return action, None
+
+    def _apply_symbol_decision(self, prepared, dec):
+        symbol, pos, state, questions, market = (prepared[k] for k in ("symbol", "pos", "state", "questions", "market"))
         default = "HOLD" if pos else "WAIT"
-        action, override = self._answer(dec, "action", default)
+        action, override = self._policy_action(dec, pos)
         usage = {name: "diagnostic_recorded_not_execution_gate" for name in questions}
-        usage["action"] = "execution_action_subject_to_guardrails"
+        if self._uses_edge(pos):
+            usage[FORECAST_ID] = "expected_value_gate_subject_to_guardrails"
+        else:
+            usage["action"] = "execution_action_subject_to_guardrails"
         if self.finished or not self._safety():
             self._disposition(dec, default, status="superseded", reasons=["hard_safety_override"], answer_usage=usage)
             return
@@ -505,7 +662,7 @@ class JevController:
             return
         if action in ("SELL", "SELL_PARTIAL"):
             fraction = self.cfg.strategy.partial_tp_ratio if action == "SELL_PARTIAL" else 1.0
-            filled = self._sell(pos["position_id"], dec, fraction=fraction, reason=f"JEV_{action}")
+            filled = self._sell(pos["position_id"], dec, fraction=fraction, reason=f"{self.label.upper()}_{action}")
             self._disposition(dec, action if filled else "HOLD", status="filled" if filled else "blocked", answer_usage=usage)
         elif action == "ROLLOVER":
             fresh = self._quote(symbol, force=True)
@@ -521,8 +678,13 @@ class JevController:
             else:
                 self._disposition(dec, "HOLD", status="blocked", reasons=["rollover_requires_fresh_quote_and_net_profit"], answer_usage=usage)
         elif action == "BUY":
-            allocation, error = self._answer(dec, "allocation", None)
-            usage["allocation"] = "bounded_budget_multiplier"
+            if self._uses_edge(None):
+                # The imitation allocation answer is diagnostic here; the smallest size is used.
+                allocation, error = min(self.cfg.decision.allocation_fractions, key=self.cfg.decision.allocation_fractions.get), None
+                usage["allocation"] = "diagnostic_expected_value_policy_uses_smallest_allocation"
+            else:
+                allocation, error = self._answer(dec, "allocation", None)
+                usage["allocation"] = "bounded_budget_multiplier"
             allocation_fallback = error == "low_confidence:allocation" and self.cfg.trading.mode == "simulation"
             if allocation_fallback:
                 allocation = min(self.cfg.decision.allocation_fractions, key=self.cfg.decision.allocation_fractions.get)
@@ -538,7 +700,7 @@ class JevController:
                     "reason": "low_confidence:allocation", "model_answer": dec["response"]["answers"]["allocation"],
                     "selected_allocation": allocation, "budget_try": budget,
                     "requires_fresh_prebuy_authorization": True})
-                self.bot.log(f"JEV [{symbol}]: tutar güveni düşük; {budget:.2f} TL sanal alım teyidine gönderiliyor.")
+                self.bot.log(f"{self.label} [{symbol}]: tutar güveni düşük; {budget:.2f} TL sanal alım teyidine gönderiliyor.")
             if self.cfg.trading.auto_select_coin or self.cfg.trading.symbol == "AUTO":
                 refreshed_pairs = self.bot.scanner.scan_top_active_pairs(limit=0, force_refresh=True, only_uptrend=False, min_gain_pct=0)
                 fresh_radar = {p["symbol"]: copy.deepcopy(p) for p in refreshed_pairs}
@@ -549,8 +711,13 @@ class JevController:
                         "budget_try": budget, "allocation_fallback": allocation_fallback,
                         "reference_ask": market.get("ask"), "prior_answers": dec["response"]["answers"]}
             prestate = self._state(symbol, refreshed, proposal=proposal)
-            prebuy = self._decide("prebuy", prestate, prebuy_questions(), parent_id=dec["id"])
-            authorization, gate_error = self._answer(prebuy, "prebuy_authorization", "WAIT")
+            prebuy = self._decide("prebuy", prestate, prebuy_questions(forecast=self.forecast), parent_id=dec["id"])
+            if self._uses_edge(None):
+                # Fresh-data recheck of the same expected-value rule, not the imitation answer.
+                edge_action, gate_error = self._policy_action(prebuy, None)
+                authorization = "EXECUTE" if edge_action == "BUY" and gate_error is None else "WAIT"
+            else:
+                authorization, gate_error = self._answer(prebuy, "prebuy_authorization", "WAIT")
             self._disposition(dec, "BUY_PROPOSED", status="delegated_to_prebuy", related=prebuy["id"], answer_usage=usage)
             if authorization == "EXECUTE" and gate_error is None:
                 if not self._safety() or self.finished:
@@ -566,6 +733,66 @@ class JevController:
                                   reasons=[gate_error] if gate_error else [])
         else:
             self._disposition(dec, action, answer_usage=usage)
+
+    def _rate_limited(self, due, held):
+        """Bound exchange requests per minute; open positions are never deferred."""
+        cap = self.cfg.decision.max_symbol_evaluations_per_minute
+        if not cap:
+            return due, []
+        now = self.clock()
+        while self.evaluation_times and now - self.evaluation_times[0] > 60:
+            self.evaluation_times.popleft()
+        positions = [s for s in due if s in held]
+        room = max(0, cap - len(self.evaluation_times) - len(positions))
+        others = [s for s in due if s not in held]
+        return positions + others[:room], others[room:]
+
+    def _conviction(self, prepared, decision):
+        """Ranking key for entries within one batch: expected edge, else P(BUY)."""
+        if prepared["pos"] is not None or not decision["valid"]:
+            return float("-inf")
+        if self._uses_edge(None):
+            edge, _, _ = self._edge(decision, side="entry")
+            return edge if edge is not None else float("-inf")
+        return decision["response"]["answers"]["action"]["probabilities"].get("BUY", 0.0)
+
+    def _step_batched(self, held, selected, interval):
+        """Everything a local model makes affordable: every due symbol in one forward pass,
+        positions re-evaluated on their own short interval, entries executed best-first."""
+        now = self.clock()
+        position_interval = self.cfg.decision.position_decision_interval_seconds or interval
+        due = [s for s in held if now - self.last_evaluated.get(s, float("-inf")) >= position_interval]
+        due += [s for s in selected if now - self.last_evaluated.get(s, float("-inf")) >= interval]
+        due, deferred = self._rate_limited(due, set(held))
+        if deferred:
+            self.store.event(self.run_id, None, "candidate_scheduling", {"method": "exchange_request_budget", "deferred_symbols": deferred,
+                             "deferred_is_not_model_rejection": True})
+        if not due:
+            return
+        fetched = self._prefetch(due)
+        prepared = []
+        for symbol in due:
+            if self.finished or (self.expect_running and not self.bot.is_running):
+                return
+            prepared.append(self._prepare_symbol(symbol, prefetched=fetched[symbol]))
+            self.evaluation_times.append(self.clock())
+        if not self._safety():
+            return
+        decisions = self._decide_batch(prepared)
+        # Exits first, then entries by descending conviction so scarce slots and cash go to the
+        # strongest setups instead of whichever symbol came first alphabetically.
+        scores = [self._conviction(p, d) for p, d in zip(prepared, decisions)]
+        order = sorted(range(len(prepared)), key=lambda i: (prepared[i]["pos"] is None, -scores[i]))
+        ranking = [{"symbol": prepared[i]["symbol"], "decision_id": decisions[i]["id"],
+                    "score": scores[i] if math.isfinite(scores[i]) else None} for i in order if prepared[i]["pos"] is None]
+        if ranking:
+            self.store.event(self.run_id, None, "entry_ranking", {"key": "expected_edge_pct" if self._uses_edge(None) else "buy_probability",
+                             "ranking": ranking})
+        for i in order:
+            if self.finished or (self.expect_running and not self.bot.is_running):
+                self._disposition(decisions[i], "HOLD" if prepared[i]["pos"] else "WAIT", status="superseded", reasons=["session_ending"])
+                continue
+            self._apply_symbol_decision(prepared[i], decisions[i])
 
     def step(self):
         with self.lock:
@@ -591,12 +818,16 @@ class JevController:
                     pdec = self._decide("portfolio", self._state(), portfolio_questions())
                     if self.finished or not self._safety(): return
                     policy, error = self._answer(pdec, "portfolio_action", "PAUSE_ENTRIES")
+                    if error and error.startswith("low_confidence") and self.cfg.decision.portfolio_low_confidence_policy == "CONTINUE":
+                        # Explicit, journaled configuration: an unsure portfolio answer does not pause
+                        # entries; every entry still needs its own gate and the hard portfolio stop.
+                        policy = "CONTINUE"
                     self.portfolio_policy = policy
                     self.last_portfolio = self.clock()
                     self._disposition(pdec, policy, status="fallback" if error else "applied", reasons=[error] if error else [])
                     if policy == "FLATTEN":
                         for pos in list(self.bot.simulator.positions.values()):
-                            self._sell(pos["position_id"], pdec, reason="JEV_PORTFOLIO_FLATTEN")
+                            self._sell(pos["position_id"], pdec, reason=f"{self.label.upper()}_PORTFOLIO_FLATTEN")
                 # Positions get priority for monitoring, never a quant-score ranking of entry candidates.
                 held = sorted({p["symbol"] for p in self.bot.simulator.positions.values()})
                 candidates = [s for s in universe if s not in held]
@@ -609,11 +840,14 @@ class JevController:
                 if len(selected) < len(candidates):
                     self.store.event(self.run_id, None, "candidate_scheduling", {"method": "alphabetical_round_robin", "evaluated_batch": selected,
                                      "deferred_symbols": [s for s in candidates if s not in selected], "deferred_is_not_model_rejection": True})
-                for symbol in held + selected:
-                    if self.finished or (self.expect_running and not self.bot.is_running): break
-                    if not self._safety(): break
-                    if self.clock() - self.last_evaluated.get(symbol, float("-inf")) < interval: continue
-                    self._evaluate_symbol(symbol)
+                if self._batched():
+                    self._step_batched(held, selected, interval)
+                else:
+                    for symbol in held + selected:
+                        if self.finished or (self.expect_running and not self.bot.is_running): break
+                        if not self._safety(): break
+                        if self.clock() - self.last_evaluated.get(symbol, float("-inf")) < interval: continue
+                        self._evaluate_symbol(symbol)
                 # WAIT/SKIP outcomes must be observed even after a symbol leaves a ranked list.
                 rows = self.store.db.execute("SELECT DISTINCT d.symbol FROM decisions d JOIN outcomes o USING(decision_id) "
                                              "WHERE d.run_id=? AND d.symbol IS NOT NULL AND o.status='pending' AND o.due_at<=?",
@@ -622,12 +856,12 @@ class JevController:
                     for row in rows: self._quote(row["symbol"])
                     if self._all_marks_fresh():
                         self.store.observe(self.run_id, equity=self._portfolio()["total_equity"], max_lateness=self.cfg.decision.outcome_max_lateness_seconds)
-                self.bot.current_status_text = f"JEV | {self.portfolio_policy} | {len(self.bot.simulator.positions)} pozisyon"
+                self.bot.current_status_text = f"{self.label} | {self.portfolio_policy} | {len(self.bot.simulator.positions)} pozisyon"
             except Exception as exc:
                 self.faulted = True
                 self.bot.is_running = False
                 self.bot.stop_completed = True
-                self.bot.current_status_text = f"JEV HALTED: {type(exc).__name__} — inspect journal"
+                self.bot.current_status_text = f"{self.label} HALTED: {type(exc).__name__} — inspect journal"
                 self.bot.log(self.bot.current_status_text)
                 try: self.store.event(self.run_id, None, "controller_fault", {"error_type": type(exc).__name__, "automatic_execution_halted": True})
                 except Exception: pass
@@ -673,10 +907,12 @@ class JevController:
             self.ending = False
 
     def status(self):
-        return {"engine": "jev", "provider": self.provider.name, "model": self.provider.model, "run_id": self.run_id,
+        return {"engine": self.engine, "provider": self.provider.name, "model": self.provider.model, "run_id": self.run_id,
+                "scheduling": "batched" if self._batched() else "sequential", "entry_policy": self.cfg.decision.entry_policy,
+                "exit_policy": self.cfg.decision.exit_policy, "entry_min_expected_edge_pct": self.entry_edge_threshold,
                 "portfolio_policy": self.portfolio_policy, "last_decision": self.last_decision,
                 "database": self.cfg.decision.database_path, "faulted": self.faulted,
-                "live_execution_enabled": False, "schema_version": SCHEMA_VERSION, "policy_version": POLICY_VERSION}
+                "live_execution_enabled": False, "schema_version": SCHEMA_VERSION, "policy_version": self.policy_version}
 
     def close(self):
         self.inference.cancel()

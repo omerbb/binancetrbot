@@ -1,0 +1,35 @@
+{
+  "run_id": "848385d0-5b92-48e4-ac2d-5d7c56e9aa36",
+  "frames_processed": 45,
+  "provider": "laya-local",
+  "fixture_not_jev": false,
+  "end_reason": "historical_data_end",
+  "portfolio": {
+    "initial_balance": 10000.0,
+    "cash": 10000.0,
+    "invested_value": 0,
+    "estimated_exit_fees": 0.0,
+    "equity_basis": "estimated_net_liquidation",
+    "total_equity": 10000.0,
+    "realized_pnl": 0,
+    "unrealized_pnl": 0,
+    "total_pnl": 0.0,
+    "total_pnl_pct": 0.0,
+    "open_positions_count": 0,
+    "open_positions": [],
+    "total_closed_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "win_rate": 0.0,
+    "closed_trades": []
+  },
+  "journal": {
+    "decision_requests": 90,
+    "last_event": {
+      "kind": "run_ended",
+      "data_json": "{\"open_positions\":0,\"reason\":\"historical_data_end\"}",
+      "event_time": 1770002640.0
+    }
+  },
+  "database_path": "data/replay/laya_replay.sqlite3"
+}

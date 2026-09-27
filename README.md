@@ -1,4 +1,6 @@
-> **Fork (JEV sürümü):** Değişiklikler, dahil edilen veriler ve gözlemler için bkz. [FORK_NOTES.md](FORK_NOTES.md). Upstream: [cihancosgun/binancetrbot](https://github.com/cihancosgun/binancetrbot).
+> **Fork (Laya sürümü):** JEV sürümünün devamı; yerel, ince ayarlı Laya modeli, eğitim verileri, modeller ve gözlemler dahil. Bkz. [FORK_NOTES.md](FORK_NOTES.md) (JEV katmanı: [FORK_NOTES_JEV.md](FORK_NOTES_JEV.md)). Büyük dosyalar Git LFS'te: klonlamadan önce `git lfs install`. Upstream: [cihancosgun/binancetrbot](https://github.com/cihancosgun/binancetrbot).
+
+> **Laya sürümü (yerel model):** Bu kopya JEV/OpenRouter yerine, JEV'in geçmiş kararları ve gerçekleşen piyasa sonuçlarıyla ince ayar yapılmış **yerel Laya** modelini kullanır. API anahtarı, ağ bağlantısı veya çağrı başı ücret yoktur. `config.laya.example.yaml` ve [LAYA_INTEGRATION.md](LAYA_INTEGRATION.md) ile başlayın. JEV motoru (`engine: jev`) karşılaştırma ve ek öğretmen verisi toplamak için korunmuştur. Gerçek Binance emirleri model motorlarında kapalıdır (yalnızca sanal işlem).
 
 > **JEV + OpenRouter entegrasyonu:** `config.jev.example.yaml` profili ve [JEV_INTEGRATION.md](JEV_INTEGRATION.md) ile başlayın. JEV bütün stratejik karar aşamalarında kullanılabilir; gerçek Binance emirleri bu modda kapalıdır. SQLite karar/sonuç kaydı, tarihsel replay ve eğitim JSONL dışa aktarımı dahil edilmiştir. Eski profiller `legacy` olarak kalır.
 

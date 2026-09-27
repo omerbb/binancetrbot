@@ -34,23 +34,36 @@ class InferenceRunner:
             return self.task is not None and not self.task.done.is_set()
 
     def submit(self, state, questions, deadline):
+        state, questions = copy.deepcopy(state), copy.deepcopy(questions)
+
+        def call(task):
+            method = getattr(self.provider, "evaluate_with_deadline", None)
+            if method is not None:
+                return method(state, questions, deadline=deadline, cancelled=task.cancelled.is_set,
+                              on_attempt=task.attempts.put)
+            return self.provider.evaluate(state, questions, on_attempt=task.attempts.put)
+        return self._start(call)
+
+    def submit_batch(self, requests, deadline):
+        """Many (state, questions) pairs in one provider call; needs provider.evaluate_batch."""
+        requests = copy.deepcopy(list(requests))
+
+        def call(task):
+            return self.provider.evaluate_batch(requests, deadline=deadline, cancelled=task.cancelled.is_set,
+                                                on_attempt=task.attempts.put)
+        return self._start(call)
+
+    def _start(self, call):
         with self.lock:
             if self.closed:
                 raise ProviderError("inference_runner_closed")
             if self.task is not None and not self.task.done.is_set():
                 raise ProviderError("inference_still_running")
             task = self.task = InferenceTask()
-            state, questions = copy.deepcopy(state), copy.deepcopy(questions)
 
             def run():
                 try:
-                    method = getattr(self.provider, "evaluate_with_deadline", None)
-                    if method is not None:
-                        task.response = method(state, questions, deadline=deadline,
-                                               cancelled=task.cancelled.is_set,
-                                               on_attempt=task.attempts.put)
-                    else:
-                        task.response = self.provider.evaluate(state, questions, on_attempt=task.attempts.put)
+                    task.response = call(task)
                 except Exception as exc:
                     task.error = exc
                 finally:

@@ -1,0 +1,108 @@
+# Laya (local, fine-tuned on JEV history + observed outcomes). Paper execution ONLY.
+# No API key, no network for decisions, no per-call cost. Copy to config.laya.yaml. See LAYA_INTEGRATION.md.
+trading:
+  mode: simulation
+  symbol: AUTO
+  auto_select_coin: true
+  target_coins_count: 5
+  max_open_positions: 5
+  auto_fill_portfolio: false
+  require_strict_buy_signal: true
+  top_coins_limit: 0
+  min_24h_volume_try: 8000000.0
+  min_coin_price: 0.05
+  initial_virtual_balance: 10000.0
+  budget_per_trade: 2000.0
+  candidate_observation_seconds: 12
+  candidate_prebuy_seconds: 10
+  min_observation_gain_pct: 0.2
+  candidate_min_burst_count: 1
+  candidate_timeout_cooldown_seconds: 10
+  filter_falling_coins: true
+  only_uptrend: true
+  min_24h_gain_pct: 0.5
+  fee_rate_pct: 0.1
+  max_market_data_age_seconds: 5.0
+  max_candle_age_seconds: 90.0
+  max_radar_age_seconds: 10.0
+  max_allowed_spread_pct: 0.2
+  btc_dump_shield_pct: 0.35
+  btc_dump_cooldown_seconds: 120
+  prevent_rebuy_churn: false
+  loss_cooldown_seconds: 180
+test:
+  duration_minutes: 15
+  auto_stop: true
+strategy:
+  active: adaptive_regime
+  take_profit_pct: 1.2
+  partial_tp_pct: 0.6
+  partial_tp_ratio: 0.5
+  enable_partial_tp: true
+  stop_loss_pct: 0.85
+  trailing_stop_pct: 0.2
+  trailing_activation_pct: 0.5
+  breakeven_trigger_pct: 0.35
+  portfolio_stop_loss_pct: 2.5
+  max_holding_seconds: 300
+  fee_multiplier: 2.0
+  cooldown_seconds: 5
+  symbol_cooldown_seconds: 30
+  loss_cooldown_seconds: 180
+  rsi_period: 14
+  rsi_oversold: 42.0
+  rsi_overbought: 65.0
+  bollinger_period: 20
+  bollinger_std_dev: 2.0
+  ema_fast: 9
+  ema_slow: 21
+api:
+  base_url: https://www.binance.tr
+  ws_url: wss://stream-cloud.binance.tr/ws
+  api_key: ''
+  secret_key: ''
+server:
+  host: 127.0.0.1
+  port: 8000
+auth:
+  enabled: true
+  username: admin
+  password: CHANGE_THIS_LOCAL_PASSWORD
+decision:
+  engine: laya
+  laya_checkpoint: models/laya-bsjev      # tools/laya_finetune.py output
+  laya_device: cpu                       # auto | cuda | cpu
+  laya_max_len: 0                         # 0 = trained max_len (1024)
+  laya_threads: 0
+  laya_batch_size: 8                      # states per forward pass (~6 question rows each)
+  laya_untrained_questions: answer        # abstain = WAIT/HOLD fallback for questions never trained
+  # What a local model makes affordable (JEV profile: 1 candidate / 60 s)
+  batch_inference: true                   # every due symbol in ONE forward pass per step
+  max_candidates_per_step: 12
+  decision_interval_seconds: 20.0         # per candidate symbol
+  position_decision_interval_seconds: 5.0 # open positions re-evaluated far more often
+  max_symbol_evaluations_per_minute: 240  # exchange request budget (inference itself is free)
+  market_fetch_workers: 6                 # parallel order book / candle refresh before a batch
+  # Outcome-trained expected-value policy (arithmetic in code, never by the model)
+  entry_policy: expected_value            # buy only if E[5 min net] - spread - fees >= threshold
+  exit_policy: expected_value             # sell when E[5 min hold] <= -min_exit_edge_pct
+  min_expected_edge_pct: null             # null = threshold selected on held-out calibration data
+  min_exit_edge_pct: 0.05
+  portfolio_low_confidence_policy: CONTINUE
+  min_action_confidence: 0.65             # still gates the portfolio PAUSE/FLATTEN answer
+  database_path: data/replay/laya_replay.sqlite3
+  max_decision_age_seconds: 30.0
+  history_candles: 50
+  history_ticks: 60
+  outcome_horizons_seconds:
+  - 60
+  - 300
+  - 900
+  outcome_max_lateness_seconds: 60.0
+  max_prebuy_price_move_pct: 0.3
+  entry_blackout_seconds: 60.0
+  slippage_bps: 0.0
+  allocation_fractions:
+    SMALL: 0.25
+    HALF: 0.5
+    FULL: 1.0

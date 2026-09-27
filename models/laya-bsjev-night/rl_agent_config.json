@@ -1,0 +1,270 @@
+{
+  "encoder": "jhu-clsp/mmBERT-base",
+  "head_layers": 2,
+  "max_len": 1024,
+  "head_max_len": 256,
+  "max_prefixes": 6,
+  "act_costs": {
+    "escalate": 0.5
+  },
+  "cost_wrong_act": 3.0,
+  "amp_dtype": "bf16",
+  "model_name": "laya-bsjev-night",
+  "temperature": [
+    1.0475151538848877,
+    0.8123840093612671,
+    1.0
+  ],
+  "temperature_by_options": {
+    "choice:3-5": 1.1623603105545044,
+    "choice:6-10": 0.9570327997207642,
+    "score:3-5": 1.0000852346420288,
+    "score:6-10": 0.8054262399673462
+  },
+  "training": {
+    "updates": 15987,
+    "epochs_completed": 4,
+    "hours": 4.97,
+    "world_size": 1,
+    "fine_tuned_from_checkpoint": false
+  },
+  "fine_tuned": true,
+  "base_model": "convaiinnovations/laya/multilingual",
+  "base_revision": null,
+  "bot_state_format": "laya-compact-v1",
+  "bot_question_coverage": {
+    "1d2deb8eee30d86e": {
+      "question_id": "portfolio_action",
+      "stages": [
+        "portfolio"
+      ],
+      "examples": 142,
+      "supervision": "teacher"
+    },
+    "6e24dbbf8de35589": {
+      "question_id": "action",
+      "stages": [
+        "candidate"
+      ],
+      "examples": 1259,
+      "supervision": "teacher"
+    },
+    "b4a7c2cc7869ef1a": {
+      "question_id": "allocation",
+      "stages": [
+        "candidate"
+      ],
+      "examples": 1259,
+      "supervision": "teacher"
+    },
+    "2266c3965aafb2c4": {
+      "question_id": "reason_code",
+      "stages": [
+        "candidate"
+      ],
+      "examples": 1259,
+      "supervision": "teacher"
+    },
+    "dca95fe538f7423b": {
+      "question_id": "regime",
+      "stages": [
+        "candidate"
+      ],
+      "examples": 1259,
+      "supervision": "teacher"
+    },
+    "f353d228d353d731": {
+      "question_id": "setup_quality",
+      "stages": [
+        "candidate"
+      ],
+      "examples": 1259,
+      "supervision": "teacher"
+    },
+    "3e203407cce73289": {
+      "question_id": "forward_return_5m",
+      "stages": [
+        "candidate",
+        "prebuy"
+      ],
+      "examples": 31551,
+      "supervision": "outcome"
+    },
+    "075bdde18ec8d97e": {
+      "question_id": "prebuy_authorization",
+      "stages": [
+        "prebuy"
+      ],
+      "examples": 2,
+      "supervision": "teacher"
+    }
+  },
+  "bot_forecast": {
+    "question_id": "forward_return_5m",
+    "question_key": "3e203407cce73289",
+    "horizon_seconds": 300,
+    "levels": [
+      {
+        "text": "fall more than 0.5 percent",
+        "low_pct": null,
+        "high_pct": -0.5
+      },
+      {
+        "text": "fall between 0.2 and 0.5 percent",
+        "low_pct": -0.5,
+        "high_pct": -0.2
+      },
+      {
+        "text": "fall between 0.02 and 0.2 percent",
+        "low_pct": -0.2,
+        "high_pct": -0.02
+      },
+      {
+        "text": "stay unchanged within 0.02 percent",
+        "low_pct": -0.02,
+        "high_pct": 0.02
+      },
+      {
+        "text": "rise between 0.02 and 0.2 percent",
+        "low_pct": 0.02,
+        "high_pct": 0.2
+      },
+      {
+        "text": "rise between 0.2 and 0.5 percent",
+        "low_pct": 0.2,
+        "high_pct": 0.5
+      },
+      {
+        "text": "rise more than 0.5 percent",
+        "low_pct": 0.5,
+        "high_pct": null
+      }
+    ],
+    "level_values_pct": [
+      -0.9094125152038925,
+      -0.30942898894146914,
+      -0.1026112955086051,
+      -0.0001418517543051448,
+      0.10040107048973468,
+      0.31471825999821873,
+      0.8824994731261848
+    ]
+  },
+  "bot_dataset": {
+    "version": "laya-bsjev-dataset-v1",
+    "sha256": "ac316a805c0f91f8d704892f76876b86b2e338c003ba914d31453b545542e130",
+    "train_splits": [
+      "train"
+    ],
+    "rows_used": 37990,
+    "sources": [
+      {
+        "path": "C:\\Users\\xxtra\\OneDrive\\Desktop\\borsaprojesi\\binancetrbot_jev_openrouter\\binancetrbot-jev\\data\\jev_demo.sqlite3",
+        "runs": 10,
+        "decisions": 1657,
+        "sha256": "90bfdb2136858374ea60478f40fbda23d243361f86e0c0507ee0c53467472370"
+      },
+      {
+        "path": "C:\\Users\\xxtra\\OneDrive\\Desktop\\borsaprojesi\\binancetrbot_jev_openrouter\\binancetrbot-jev\\verification\\jev_audit_20260926\\real_jev.sqlite3",
+        "runs": 1,
+        "decisions": 14,
+        "sha256": "97a488cbb4ab86cb90558289f79865dda0805e52896e481afd4f370dea684ae5"
+      },
+      {
+        "path": "C:\\Users\\xxtra\\OneDrive\\Desktop\\borsaprojesi\\binancetrbot_jev_openrouter\\binancetrbot-jev\\verification\\jev_fix_20260926\\real_jev.sqlite3",
+        "runs": 1,
+        "decisions": 12,
+        "sha256": "7b787132cbb3d4bcadd0fca363cf62af630019b37b82cd95179f617fdd939372"
+      },
+      {
+        "path": "C:\\Users\\xxtra\\OneDrive\\Desktop\\borsaprojesi\\binancetrbot_jev_openrouter\\binancetrbot-jev\\verification\\jev_fix_20260926\\real_jev_final.sqlite3",
+        "runs": 1,
+        "decisions": 8,
+        "sha256": "ba0739cc53dffca72d66d6bbfefdec12ee922db8c066bc7fa67ba7c2354c0b18"
+      },
+      {
+        "path": "C:\\laya_data\\laya_night.sqlite3",
+        "runs": 1,
+        "decisions": 15646,
+        "sha256": "60d1b551545e66b261f41e50e4ff23142fa9c80ba9f02d2db89e4cc313266d86"
+      }
+    ]
+  },
+  "bot_training": {
+    "base": "convaiinnovations/laya",
+    "subfolder": "multilingual",
+    "train_splits": "train",
+    "epochs": 2,
+    "micro_batch": 8,
+    "grad_accum": 4,
+    "lr_encoder": 2.5e-05,
+    "lr_head": 0.0001,
+    "outcome_weight": 1.0,
+    "oversample_outcome": 1,
+    "teacher_fraction": 0.3,
+    "outcome_fraction": 0.4,
+    "rl_weight": 1.0,
+    "init": "models/laya-bsjev",
+    "max_len": 1024,
+    "head_max_len": 256,
+    "group_size": 4,
+    "sigma_start": 0.4,
+    "sigma_end": 0.1,
+    "no_grad_checkpointing": false,
+    "unfreeze_embeddings": false,
+    "seed": 7,
+    "limit": 0,
+    "best_epoch": 2,
+    "history": [
+      {
+        "epoch": 1,
+        "calib": {
+          "teacher": {
+            "ce": 1.0092,
+            "argmax_agreement": 0.74,
+            "n": 1227
+          },
+          "outcome": {
+            "ce": 1.7415,
+            "argmax_agreement": 0.2378,
+            "n": 7763
+          }
+        },
+        "calib_mean_ce": 1.6416,
+        "elapsed_min": 27.5
+      },
+      {
+        "epoch": 2,
+        "calib": {
+          "teacher": {
+            "ce": 0.9785,
+            "argmax_agreement": 0.7702,
+            "n": 1227
+          },
+          "outcome": {
+            "ce": 1.7272,
+            "argmax_agreement": 0.2781,
+            "n": 7763
+          }
+        },
+        "calib_mean_ce": 1.625,
+        "elapsed_min": 54.5
+      }
+    ],
+    "minutes": 58.8,
+    "device": "NVIDIA GeForce RTX 4070 Laptop GPU",
+    "embeddings_frozen": true
+  },
+  "bot_policy": {
+    "entry_min_expected_edge_pct": 0.09,
+    "edge_found_on_calibration": false,
+    "selected_on": "calib",
+    "calib_at_threshold": null,
+    "test_at_threshold": {
+      "trades": 0
+    },
+    "horizon_seconds": 300,
+    "written_at": 1790511608.88936
+  },
+  "initialized_from": "C:\\Users\\xxtra\\OneDrive\\Desktop\\borsaprojesi\\binancetrbot_laya\\models\\laya-bsjev"
+}

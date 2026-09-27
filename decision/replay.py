@@ -167,8 +167,8 @@ def iter_frames(path):
 
 def run_replay(config, path, *, provider=None):
     from bot import BinanceTrBot
-    if config.trading.mode != "simulation" or config.decision.engine != "jev":
-        raise ValueError("Replay requires trading.mode=simulation and decision.engine=jev")
+    if config.trading.mode != "simulation" or config.decision.engine not in ("jev", "laya"):
+        raise ValueError("Replay requires trading.mode=simulation and decision.engine=jev or laya")
     clock = ReplayClock()
     feed = ReplayFeed(clock)
     frames = iter_frames(path)
