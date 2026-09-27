@@ -149,7 +149,15 @@ Tüm sayılar bu repodaki verilerden, `tools/laya_evaluate.py` ve `research/outc
 
 ## 6. Modeller ve veriler
 
-Büyük dosyalar **Git LFS**'te (~2,1 GB). Klonlamadan önce `git lfs install` çalıştırın.
+Klonladıktan sonra büyük dosyaları tek komutla hazırlayın:
+
+```bash
+python tools/fetch_artifacts.py
+```
+
+- **Veriler repoda.** Eğitim setleri ve gece journal'ı gzip ile sıkıştırılmış olarak `artifacts/*.gz` altında (~70 MB; açılınca ~500 MB). Betik bunları beklenen yollara açar.
+- **Model ağırlıkları Release'de.** İki model ağırlığı (her biri 644 MB) bu forkun [`laya-models-v1` Release'inde](https://github.com/omerbb/binancetrbot/releases/tag/laya-models-v1). GitHub, herkese açık forklarda yeni Git LFS nesnesine izin vermiyor.
+- **Doğrulama.** Betik her dosyayı SHA-256 ile doğrular; doğru dosyaları tekrar indirmez.
 
 | Yol | İçerik |
 |---|---|
@@ -168,8 +176,8 @@ Büyük dosyalar **Git LFS**'te (~2,1 GB). Klonlamadan önce `git lfs install` �
 ## 7. Çalıştırma
 
 ```bash
-git lfs install
 python -m venv .venv && .venv/Scripts/python -m pip install -r requirements-laya.txt   # CUDA'lı torch'u önce kurun
+.venv/Scripts/python tools/fetch_artifacts.py         # veriler (repodan) + modeller (Release'den), SHA-256 doğrulamalı
 
 # Laya (varsayılan, yerel)
 cp config.laya.example.yaml config.laya.yaml          # auth.password'ü değiştirin
