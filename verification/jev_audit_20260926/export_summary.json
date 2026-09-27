@@ -1,0 +1,26 @@
+{
+  "fixture_default": {
+    "rows_written": 0,
+    "requests_seen": 310,
+    "fixtures_excluded": 310,
+    "without_valid_teacher": 0,
+    "incomplete_excluded": 0,
+    "layout": "questions"
+  },
+  "fixture_questions": {
+    "rows_written": 798,
+    "requests_seen": 310,
+    "fixtures_excluded": 0,
+    "without_valid_teacher": 0,
+    "incomplete_excluded": 0,
+    "layout": "questions"
+  },
+  "real_questions": {
+    "rows_written": 36,
+    "requests_seen": 14,
+    "fixtures_excluded": 0,
+    "without_valid_teacher": 2,
+    "incomplete_excluded": 0,
+    "layout": "questions"
+  }
+}

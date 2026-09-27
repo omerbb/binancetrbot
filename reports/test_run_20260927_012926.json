@@ -1,0 +1,58 @@
+{
+  "generated_at": "2026-09-27 01:29:26",
+  "config": {
+    "trading": {
+      "mode": "simulation",
+      "symbol": "AUTO",
+      "budget_per_trade": 2000.0
+    },
+    "strategy": {
+      "active": "adaptive_regime",
+      "take_profit_pct": 1.2,
+      "stop_loss_pct": 0.85
+    },
+    "test": {
+      "duration_minutes": 20
+    }
+  },
+  "metrics": {
+    "initial_balance": 10000.0,
+    "final_equity": 10000.0,
+    "net_pnl": 0.0,
+    "net_pnl_pct": 0.0,
+    "total_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "win_rate": 0.0,
+    "gross_profit": 0,
+    "gross_loss": 0,
+    "profit_factor": 0.0,
+    "max_drawdown_pct": 0.0,
+    "max_drawdown_amount": 0.0,
+    "avg_trade_pnl": 0.0,
+    "avg_hold_time_seconds": 0.0,
+    "best_trade": 0.0,
+    "worst_trade": 0.0
+  },
+  "trades": [],
+  "open_positions": [],
+  "equity_curve": [
+    {
+      "time": 1790460564.3136456,
+      "equity": 10000.0
+    }
+  ],
+  "logs": [
+    "[00:38:45] 🚀 Bot başlatıldı! Mod: SIMULATION | Parite: AUTO | Süre: 30 dk",
+    "[00:38:45] JEV karar motoru: typesafe/jev-1.13 | Paper-only | kayıt: data/jev_demo.sqlite3",
+    "[00:59:17] JEV [PYTH_TRY]: tutar güveni düşük; 500.00 TL sanal alım teyidine gönderiliyor.",
+    "[01:06:14] JEV [FET_TRY]: tutar güveni düşük; 500.00 TL sanal alım teyidine gönderiliyor.",
+    "[01:08:48] ⏱️ Test süresi tamamlandı! Otomatik durduruluyor...",
+    "[01:08:48] 🛑 Bot durduruldu. Kalan açık test pozisyonları realize ediliyor...",
+    "[01:08:48] 📊 Rapor kaydedildi: reports\\test_run_20260927_010848.html",
+    "[01:09:24] 🚀 Bot başlatıldı! Mod: SIMULATION | Parite: AUTO | Süre: 20 dk",
+    "[01:09:24] JEV karar motoru: typesafe/jev-1.13 | Paper-only | kayıt: data/jev_demo.sqlite3",
+    "[01:29:26] ⏱️ Test süresi tamamlandı! Otomatik durduruluyor...",
+    "[01:29:26] 🛑 Bot durduruldu. Kalan açık test pozisyonları realize ediliyor..."
+  ]
+}

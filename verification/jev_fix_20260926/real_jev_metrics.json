@@ -1,0 +1,80 @@
+[
+  {
+    "database": "verification/jev_fix_20260926/real_jev.sqlite3",
+    "integrity": "ok",
+    "foreign_key_violations": 0,
+    "runs": [
+      {
+        "run_id": "71d6c908-7d92-4d9c-b09b-e1c9b8191b07",
+        "started_at": 1770003600.0,
+        "ended_at": 1770003900.0,
+        "end_reason": "http_call_budget_reached",
+        "provider": "openrouter-systemone",
+        "environment": "historical_replay",
+        "policy_version": "jev-spot-policy-v3",
+        "fixture": false,
+        "confidence_threshold": 0.3,
+        "code_sha256": "82d1a85ef4d9209bf957ea7319c1edc36aefd6ad8f1f3ab99d774cd69cb29031"
+      }
+    ],
+    "decisions": 12,
+    "stages": {
+      "portfolio": 6,
+      "candidate": 6
+    },
+    "events": {
+      "run_started": 1,
+      "decision_requested": 12,
+      "inference_attempt": 13,
+      "model_response": 12,
+      "valid_model_response": 11,
+      "decision_disposition": 12,
+      "decision_retry": 1,
+      "outcome_updated": 12,
+      "inference_failed": 1,
+      "outcome_censored": 24,
+      "run_ended": 1
+    },
+    "errors": {
+      "Choice is not a highest-probability allowed option: allocation": 1,
+      "http_call_budget_reached": 1
+    },
+    "dispositions": {
+      "PAUSE_ENTRIES:fallback": 2,
+      "WAIT:fallback": 5,
+      "PAUSE_ENTRIES:applied": 4,
+      "WAIT:applied": 1
+    },
+    "overrides": {
+      "low_confidence:portfolio_action": 2,
+      "low_confidence:action": 4,
+      "inference_failed_or_invalid": 1
+    },
+    "raw_choices_including_invalid": {
+      "portfolio_action:PAUSE_ENTRIES": 6,
+      "action:WAIT": 5,
+      "action:SKIP": 1
+    },
+    "models": {
+      "typesafe/jev-1.13-20260917": 12
+    },
+    "http_attempt_statuses": {
+      "200": 12,
+      "protocol_error": 1
+    },
+    "reported_cost_usd": 0.0026098379999999997,
+    "response_latency_ms": {
+      "n": 12,
+      "mean": 599.0,
+      "p95": 1094.0,
+      "max": 1094.0
+    },
+    "unresolved_intents": 0,
+    "fills": {},
+    "outcomes": {
+      "censored": 24,
+      "observed": 12
+    },
+    "ledger": []
+  }
+]

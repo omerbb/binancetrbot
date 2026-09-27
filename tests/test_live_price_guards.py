@@ -1,3 +1,4 @@
+import time
 import pytest
 from unittest.mock import MagicMock
 from core.risk_manager import RiskManager
@@ -131,7 +132,7 @@ def test_bot_force_test_buy_live_arguments():
     bot.scanner = MagicMock()
     bot.get_engine_for = MagicMock()
     engine_mock = MagicMock()
-    engine_mock.update_market_state.return_value = {"price": 2500.0}
+    engine_mock.update_market_state.return_value = {"price": 2500.0, "bid": 2500.0, "ask": 2500.0, "timestamp": time.time(), "quote_valid": True}
     bot.get_engine_for.return_value = engine_mock
     
     pos = bot.force_test_buy(symbol="SOL_TRY", budget=200.0, reason="Manuel Test")

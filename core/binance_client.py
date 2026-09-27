@@ -1,4 +1,5 @@
 import time
+import math
 import hmac
 import hashlib
 import requests
@@ -24,8 +25,8 @@ class BinanceTrClient:
             "User-Agent": "BinanceTrBot/1.0",
             "Content-Type": "application/x-www-form-urlencoded",
         })
-        if self.api_key:
-            self.session.headers["X-MBX-APIKEY"] = self.api_key
+        # Public/global fallback requests must never inherit account credentials.
+        self.kline_sources: Dict[str, str] = {}
 
     def _sign_payload(self, params: Dict[str, Any]) -> Dict[str, Any]:
         params = dict(params)
@@ -44,19 +45,20 @@ class BinanceTrClient:
         url = f"{self.base_url}{endpoint}"
         params = params or {}
 
+        headers = {}
         if signed:
             if not self.api_key or not self.secret_key:
                 raise ValueError("İmzalı işlem için API Key ve Secret Key tanımlanmalıdır.")
-            self.session.headers["X-MBX-APIKEY"] = self.api_key
+            headers["X-MBX-APIKEY"] = self.api_key
             params = self._sign_payload(params)
 
         try:
             if method.upper() == "GET":
-                response = self.session.get(url, params=params, timeout=2.5)
+                response = self.session.get(url, params=params, headers=headers, timeout=2.5)
             elif method.upper() == "POST":
-                response = self.session.post(url, data=params, timeout=2.5)
+                response = self.session.post(url, data=params, headers=headers, timeout=2.5)
             elif method.upper() == "DELETE":
-                response = self.session.delete(url, params=params, timeout=2.5)
+                response = self.session.delete(url, params=params, headers=headers, timeout=2.5)
             else:
                 raise ValueError(f"Desteklenmeyen HTTP metodu: {method}")
 
@@ -121,8 +123,10 @@ class BinanceTrClient:
                 if resp.status_code == 200:
                     data = resp.json()
                     if isinstance(data, list) and len(data) > 0:
+                        self.kline_sources[symbol] = url.split("/api/")[0]
                         return data
                     if isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
+                        self.kline_sources[symbol] = url.split("/api/")[0]
                         return data["data"]
             except Exception:
                 continue
@@ -133,8 +137,10 @@ class BinanceTrClient:
         if res.get("code") == 0 and "data" in res:
             data = res["data"]
             if isinstance(data, dict) and "list" in data:
+                self.kline_sources[symbol] = self.base_url
                 return data["list"]
             if isinstance(data, list):
+                self.kline_sources[symbol] = self.base_url
                 return data
         return []
 
@@ -150,21 +156,25 @@ class BinanceTrClient:
         En iyi alış (bid) ve en iyi satış (ask) fiyatlarını hesaplar.
         """
         depth = self.get_depth(symbol, limit=5)
-        if depth.get("code") == 0 and "data" in depth:
-            bids = depth["data"].get("bids", [])
-            asks = depth["data"].get("asks", [])
-            if bids and asks:
-                best_bid = float(bids[0][0])
-                best_ask = float(asks[0][0])
-                mid_price = (best_bid + best_ask) / 2.0
-                return {
-                    "bid": best_bid,
-                    "ask": best_ask,
-                    "mid": mid_price,
-                    "spread": best_ask - best_bid,
-                    "spread_pct": ((best_ask - best_bid) / best_bid) * 100.0,
-                }
-        return None
+        if not isinstance(depth, dict) or depth.get("code") != 0:
+            return None
+        data = depth.get("data")
+        if not isinstance(data, dict):
+            return None
+        try:
+            best_bid = float(data["bids"][0][0])
+            best_ask = float(data["asks"][0][0])
+        except (KeyError, IndexError, TypeError, ValueError):
+            return None
+        if not all(math.isfinite(p) and p > 0 for p in (best_bid, best_ask)) or best_ask < best_bid:
+            return None
+        return {
+            "bid": best_bid,
+            "ask": best_ask,
+            "mid": (best_bid + best_ask) / 2.0,
+            "spread": best_ask - best_bid,
+            "spread_pct": ((best_ask - best_bid) / best_bid) * 100.0,
+        }
 
     # ==================== PRIVATE ENDPOINTS (Canlı Hesap İçin) ====================
 

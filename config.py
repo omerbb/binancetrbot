@@ -29,6 +29,9 @@ class TradingConfig:
 
 
     fee_rate_pct: float = 0.1
+    max_market_data_age_seconds: float = 5.0 # Yeni emir için azami tahta verisi yaşı
+    max_candle_age_seconds: float = 90.0     # Son kapanmış 1m mumun azami yaşı
+    max_radar_age_seconds: float = 10.0      # Aday feature verisinin azami yaşı
     max_allowed_spread_pct: float = 0.20     # En fazla %0.20 alış-satış makası (Spread Guard)
     btc_dump_shield_pct: float = 0.35        # BTC 1 dakikada %0.35 düşerse alımları dondur (Market Beta Shield)
     btc_dump_cooldown_seconds: int = 120     # BTC dump sonrası dondurma süresi (120 sn)
@@ -86,6 +89,33 @@ class AuthConfig:
     password: str = "admin123"
 
 @dataclass
+class DecisionConfig:
+    # Old profiles stay explicit legacy profiles. Use config.jev.example.yaml for Jev.
+    engine: str = "legacy"
+    model: str = "typesafe/jev-1.13"
+    api_key_env: str = "OPENROUTER_API_KEY"  # The secret itself is NEVER in YAML/state/logs.
+    api_key: str = ""  # Optional local override for config.jev.demo.yaml; never serialized in journals.
+    endpoint: str = "https://openrouter.ai/api/v1/systemone"
+    database_path: str = "data/jev_decisions.sqlite3"
+    request_timeout_seconds: float = 4.0
+    max_attempts: int = 2
+    retry_backoff_seconds: float = 0.25
+    max_request_bytes: int = 90000
+    min_action_confidence: float = 0.65
+    decision_interval_seconds: float = 15.0
+    max_candidates_per_step: int = 4  # Round-robin, NOT an investment-ranking filter.
+    history_candles: int = 50
+    history_ticks: int = 60
+    outcome_horizons_seconds: List[int] = field(default_factory=lambda: [60, 300, 900])
+    outcome_max_lateness_seconds: float = 60.0
+    max_decision_age_seconds: float = 8.0
+    max_prebuy_price_move_pct: float = 0.30
+    entry_blackout_seconds: float = 60.0
+    slippage_bps: float = 0.0
+    # Exact, bounded execution choices; new names here acquire a real BUY-size meaning.
+    allocation_fractions: Dict[str, float] = field(default_factory=lambda: {"SMALL": 0.25, "HALF": 0.5, "FULL": 1.0})
+
+@dataclass
 class BotConfig:
     trading: TradingConfig = field(default_factory=TradingConfig)
     test: TestConfig = field(default_factory=TestConfig)
@@ -93,6 +123,7 @@ class BotConfig:
     api: ApiConfig = field(default_factory=ApiConfig)
     server: ServerConfig = field(default_factory=ServerConfig)
     auth: AuthConfig = field(default_factory=AuthConfig)
+    decision: DecisionConfig = field(default_factory=DecisionConfig)
     loaded_config_path: str = "config.test.yaml"
 
 def resolve_config_path(config_path: Optional[str] = None, mode: Optional[str] = None) -> str:
@@ -147,16 +178,24 @@ def mask_string(val: str, keep_chars: int = 4) -> str:
 def config_to_dict(config: BotConfig, mask_secrets: bool = False) -> Dict[str, Any]:
     """
     BotConfig nesnesini JSON/REST API için sözlüğe çevirir.
-    mask_secrets True ise secret_key ve password maskelenir.
+    mask_secrets True ise API anahtarları ve parola maskelenir.
     """
     data = asdict(config)
     if mask_secrets:
+        data["api"]["api_key"] = "********" if data["api"].get("api_key") else ""
         if data.get("api", {}).get("secret_key"):
             data["api"]["secret_key_masked"] = mask_string(data["api"]["secret_key"])
             data["api"]["has_secret_key"] = bool(data["api"]["secret_key"])
         else:
             data["api"]["secret_key_masked"] = ""
             data["api"]["has_secret_key"] = False
+
+        # İstemciye yalnızca sabit bir placeholder gider; kısmi secret bile gönderilmez.
+        data["api"]["secret_key"] = "********" if data["api"]["has_secret_key"] else ""
+        data["api"]["secret_key_masked"] = data["api"]["secret_key"]
+
+        if data.get("decision", {}).get("api_key"):
+            data["decision"]["api_key"] = "********"
 
         if data.get("auth", {}).get("password"):
             data["auth"]["has_password"] = bool(data["auth"]["password"])
@@ -176,7 +215,7 @@ def update_config_from_dict(config: BotConfig, data: Dict[str, Any]) -> BotConfi
                 field_type = fields[k].type
                 try:
                     # Özel durum: Parola veya Secret Key '********' ise güncelleme yapma (eskiyi koru)
-                    if (k in ("secret_key", "password")) and (v == "********" or v == "" or v is None):
+                    if (k in ("api_key", "secret_key", "password")) and (v == "********" or v == "" or v is None):
                         continue
                     if field_type == int:
                         setattr(obj, k, int(v))
@@ -200,6 +239,7 @@ def update_config_from_dict(config: BotConfig, data: Dict[str, Any]) -> BotConfi
     _update_section(config.api, data.get("api"))
     _update_section(config.server, data.get("server"))
     _update_section(config.auth, data.get("auth"))
+    _update_section(config.decision, data.get("decision"))
 
     if "loaded_config_path" in data and data["loaded_config_path"]:
         config.loaded_config_path = str(data["loaded_config_path"])
@@ -247,6 +287,7 @@ def load_config(config_path: Optional[str] = None, mode: Optional[str] = None) -
     api_data = data.get("api", {})
     server_data = data.get("server", {})
     auth_data = data.get("auth", {})
+    decision_data = data.get("decision", {})
 
     cfg = BotConfig(
         trading=TradingConfig(**{k: v for k, v in trading_data.items() if k in TradingConfig.__dataclass_fields__}),
@@ -255,6 +296,7 @@ def load_config(config_path: Optional[str] = None, mode: Optional[str] = None) -
         api=ApiConfig(**{k: v for k, v in api_data.items() if k in ApiConfig.__dataclass_fields__}),
         server=ServerConfig(**{k: v for k, v in server_data.items() if k in ServerConfig.__dataclass_fields__}),
         auth=AuthConfig(**{k: v for k, v in auth_data.items() if k in AuthConfig.__dataclass_fields__}),
+        decision=DecisionConfig(**{k: v for k, v in decision_data.items() if k in DecisionConfig.__dataclass_fields__}),
         loaded_config_path=resolved_path,
     )
 
@@ -283,6 +325,7 @@ def save_config(config: BotConfig, config_path: Optional[str] = None) -> str:
         "api": asdict(config.api),
         "server": asdict(config.server),
         "auth": asdict(config.auth),
+        "decision": asdict(config.decision),
     }
 
     with open(target_path, "w", encoding="utf-8") as f:

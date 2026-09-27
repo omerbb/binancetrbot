@@ -1,0 +1,58 @@
+{
+  "actual_uvicorn_server": true,
+  "transport": "unix_domain_socket",
+  "external_network_disabled": true,
+  "provider": "fixture-not-jev",
+  "checks": [
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/api/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/config/full",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/decisions/status",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/start",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/config/full",
+      "status": 409
+    },
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/stop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/decisions/recent",
+      "status": 200
+    }
+  ]
+}

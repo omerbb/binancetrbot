@@ -27,10 +27,14 @@ class MicroMomentumTracker:
         window_seconds: int = 60,
         cooldown_seconds: int = 20,
         min_momentum_pct: float = 0.25,
+        clock=None,
     ):
+        self._clock = clock or (lambda: time.time())
         self.window_seconds = window_seconds
         self.cooldown_seconds = cooldown_seconds
         self.min_momentum_pct = min_momentum_pct
+        self.min_observation_seconds = 0
+        self.min_burst_count = 1
         
         # symbol -> deque of (timestamp, price, volume_try)
         self.history: Dict[str, deque] = {}
@@ -41,9 +45,25 @@ class MicroMomentumTracker:
         # symbol -> 10s prebuy tracking state
         self.prebuy_tracking: Dict[str, Dict[str, Any]] = {}
 
+    @property
+    def min_gain_pct(self) -> float:
+        return self.min_momentum_pct
+
+    @min_gain_pct.setter
+    def min_gain_pct(self, value: float) -> None:
+        self.min_momentum_pct = value
+
+    @property
+    def timeout_cooldown_seconds(self) -> float:
+        return self.cooldown_seconds
+
+    @timeout_cooldown_seconds.setter
+    def timeout_cooldown_seconds(self, value: float) -> None:
+        self.cooldown_seconds = value
+
     def is_cooling_down(self, symbol: str) -> bool:
         """Coinin soğuma/dinlenme süresinde olup olmadığını kontrol eder."""
-        now = time.time()
+        now = self._clock()
         if symbol in self.cooldowns:
             if now < self.cooldowns[symbol]:
                 return True
@@ -53,9 +73,11 @@ class MicroMomentumTracker:
 
     def record_tick(self, symbol: str, price: float, volume_try: float = 0.0, timestamp: Optional[float] = None) -> None:
         """Yeni bir fiyat ve hacim tick'ini kaydeder ve 60 saniyeden eski verileri temizler."""
-        if price <= 0:
+        now = self._clock() if timestamp is None else timestamp
+        if not all(math.isfinite(v) for v in (price, volume_try, now)) or price <= 0 or volume_try < 0:
             return
-        now = timestamp or time.time()
+        if symbol in self.history and self.history[symbol] and now <= self.history[symbol][-1][0]:
+            return
         if symbol not in self.first_seen:
             self.first_seen[symbol] = now
             self.history[symbol] = deque(maxlen=300)
@@ -72,7 +94,7 @@ class MicroMomentumTracker:
         """
         Son 60 saniyelik mikro-hareketten 3 katmanlı kırılım metriklerini hesaplar.
         """
-        now = time.time()
+        now = self._clock()
         if symbol in self.cooldowns and now < self.cooldowns[symbol]:
             rem = int(self.cooldowns[symbol] - now)
             return {
@@ -103,9 +125,11 @@ class MicroMomentumTracker:
 
         dq = self.history[symbol]
         cutoff_60 = now - self.window_seconds
-        recent_items = [item for item in dq if item[0] >= cutoff_60]
+        recent_items = [item for item in dq if cutoff_60 <= item[0] <= now]
         if len(recent_items) < 2:
-            recent_items = list(dq)
+            return {"status": "stale", "velocity_1m_pct": 0.0, "volume_surge_ratio": 1.0,
+                    "is_squeeze_breakout": False, "burst_ratio": 0.0, "elapsed": int(now - self.first_seen.get(symbol, now)),
+                    "cooldown_remaining": 0, "is_qualified": False, "is_dumping": False}
 
         prices = [item[1] for item in recent_items]
         vols = [item[2] for item in recent_items if len(item) > 2]
@@ -128,7 +152,7 @@ class MicroMomentumTracker:
         total_transitions = max(1, up_ticks + down_ticks)
         burst_ratio = up_ticks / total_transitions
 
-        # 2. Hacim Patlaması Dalgası (Volume Surge Index / RVOL)
+        # Legacy proxy: change in a rolling 24h total, NOT measured 1m volume or true RVOL.
         vol_surge_ratio = 1.0
         if len(vols) >= 4 and vols[-1] > vols[0] > 0:
             vol_surge_ratio = min(5.0, max(1.0, (vols[-1] - vols[0]) / max(1.0, vols[0]) * 100.0))
@@ -149,7 +173,9 @@ class MicroMomentumTracker:
 
         # Kalifikasyon: Yeterli pozitif ivme, tutarlılık, dump olmaması ve DURGUN OLMAMASI
         is_qualified = (
-            not is_stagnant 
+            not is_stagnant
+            and recent_items[-1][0] - recent_items[0][0] >= self.min_observation_seconds
+            and up_ticks >= self.min_burst_count
             and not is_dumping
             and (
                 (velocity_pct >= self.min_momentum_pct and burst_ratio >= 0.40)
@@ -162,6 +188,9 @@ class MicroMomentumTracker:
             "velocity_1m_pct": round(velocity_pct, 2),
             "burst_ratio": round(burst_ratio, 2),
             "volume_surge_ratio": round(vol_surge_ratio, 2),
+            "volume_surge_is_proxy": True,
+            "true_rvol_available": False,
+            "sample_span_seconds": recent_items[-1][0] - recent_items[0][0],
             "is_squeeze_breakout": is_squeeze_breakout,
             "is_stagnant": is_stagnant,
             "unique_ticks": len(unique_prices),
@@ -181,7 +210,7 @@ class MicroMomentumTracker:
         """
         self.record_tick(symbol, current_price)
         metrics = self.get_micro_metrics(symbol)
-        now = time.time()
+        now = self._clock()
         elapsed = metrics.get("elapsed", 0)
 
         if metrics.get("status") == "cooldown":
@@ -222,7 +251,7 @@ class MicroMomentumTracker:
         if observation_seconds <= 0:
             return True, "Doğrudan Alım Onaylandı", 0
 
-        now = time.time()
+        now = self._clock()
         # Cooldown kontrolü
         if symbol in self.cooldowns:
             if now < self.cooldowns[symbol]:
@@ -290,7 +319,7 @@ class MicroMomentumTracker:
         Kesintisiz kayan pencere (smooth rolling window) akışı için
         60 saniyeden eski tickleri temizler, taze momentumu bölmez.
         """
-        t = now or time.time()
+        t = self._clock() if now is None else now
         cutoff = t - self.window_seconds
         for sym, dq in list(self.history.items()):
             if dq:
@@ -311,7 +340,7 @@ class MicroMomentumTracker:
             "change_pct": m.get("velocity_1m_pct", 0.0),
             "target_gain_pct": self.min_momentum_pct,
             "burst_count": m.get("up_ticks", 0),
-            "min_burst_count": 1,
+            "min_burst_count": self.min_burst_count,
             "is_ready": m.get("is_qualified", False),
             "is_squeeze_breakout": m.get("is_squeeze_breakout", False),
             "volume_surge_ratio": m.get("volume_surge_ratio", 1.0),
@@ -343,7 +372,10 @@ class MarketScanner:
         btc_dump_shield_pct: float = 0.35,
         btc_dump_cooldown_seconds: int = 120,
         calibration_window_seconds: int = 60,
+        clock=None,
     ):
+        self._clock = clock or (lambda: time.time())
+        self.feature_only = False
         self.client = client or BinanceTrClient()
         self.quote_asset = quote_asset.upper()
         self.min_volume_try = min_volume_try
@@ -358,12 +390,14 @@ class MarketScanner:
         self.tr_listed_symbols: Set[str] = set()
         self.last_scan_time: float = 0.0
         self.scan_cache_ttl_seconds: int = 4
+        self.max_source_age_seconds: float = 10.0
         
         # 1-Dakikalık 3-Katmanlı Kırılım Takipçisi
         self.tracker = MicroMomentumTracker(
             window_seconds=calibration_window_seconds,
             cooldown_seconds=20,
             min_momentum_pct=0.25,
+            clock=self._clock,
         )
         self.watchlist = self.tracker
         self._load_tr_symbols()
@@ -373,7 +407,7 @@ class MarketScanner:
         BTC/TRY'nin son 1 dakikalık mikro-momentumunu denetler.
         Eğer BTC sert satış dalgasına (dump) girmişse tüm altcoin alımlarını dondurur.
         """
-        now = time.time()
+        now = self._clock()
         if now < self.btc_dump_until:
             rem = int(self.btc_dump_until - now)
             return True, f"🛡️ BTC Piyasa Çöküş Kalkanı Aktif ({rem}sn donduruldu)"
@@ -434,7 +468,7 @@ class MarketScanner:
         # 3. Hacim Skoru (Logaritmik 100K - 1B TRY) + RVOL Patlama Bonusu
         vol_score = max(0.0, min(10.0, math.log10(max(vol_try, 1.0)) * 1.3))
         if vol_surge >= 1.5:
-            vol_score = min(10.0, vol_score + 2.0)  # Gerçek para girişi / Hacim patlaması bonusu
+            vol_score = min(10.0, vol_score + 2.0)  # Legacy rolling-24h-volume proxy bonus (not true RVOL)
 
         # 4. Volatilite & Sıkışma Kırılımı Skoru
         volatility_pct = ((high - low) / low) * 100.0 if (low and low > 0) else 0.0
@@ -461,13 +495,11 @@ class MarketScanner:
         Binance TR'de işlem gören tüm TRY çiftlerini tarar, 3-katmanlı mikro-kırılım
         metrikleriyle birleştirir ve quant skoruna göre sıralar.
         """
-        now = time.time()
-        if not force_refresh and (now - self.last_scan_time < self.scan_cache_ttl_seconds) and self.cached_top_pairs:
+        now = self._clock()
+        if not force_refresh and (0 <= now - self.last_scan_time < self.scan_cache_ttl_seconds):
             pairs = self.cached_top_pairs
-            if only_uptrend:
+            if only_uptrend and not self.feature_only:
                 filtered = [p for p in pairs if p["change_pct"] >= min_gain_pct and not p.get("is_dumping", False)]
-                if not filtered and min_gain_pct > 0:
-                    filtered = [p for p in pairs if p["change_pct"] > 0 and not p.get("is_dumping", False)]
                 return filtered[:limit] if (limit and limit > 0) else filtered
 
             return pairs[:limit] if (limit and limit > 0) else pairs
@@ -475,6 +507,8 @@ class MarketScanner:
 
         if not self.tr_listed_symbols:
             self._load_tr_symbols()
+        if not self.tr_listed_symbols:
+            return []
 
         endpoints = [
             "https://api.binance.com/api/v3/ticker/24hr",
@@ -486,41 +520,53 @@ class MarketScanner:
             try:
                 resp = requests.get(ep, timeout=5)
                 if resp.status_code == 200:
-                    raw_data = resp.json()
-                    break
+                    candidate_data = resp.json()
+                    if isinstance(candidate_data, list):
+                        raw_data = candidate_data
+                        break
             except Exception:
                 continue
 
-        if not raw_data or not isinstance(raw_data, list):
-            res = self.cached_top_pairs or []
-            return res[:limit] if (limit and limit > 0) else res
+        if not isinstance(raw_data, list):
+            # Old leaders may remain visible, but cannot be returned as fresh candidates.
+            return []
 
+        now = self._clock()  # Receipt time; source timestamps are checked separately below.
         valid_pairs = []
         suffix = self.quote_asset
 
         for item in raw_data:
+            if not isinstance(item, dict):
+                continue
             sym = item.get("symbol", "")
+            if not isinstance(sym, str):
+                continue
             if not sym.endswith(suffix):
                 continue
 
             base = sym[:-len(suffix)]
-            if base in STABLE_ASSETS:
+            if base in STABLE_ASSETS and not self.feature_only:
                 continue
 
             tr_symbol = f"{base}_{suffix}"
             if self.tr_listed_symbols and tr_symbol not in self.tr_listed_symbols:
                 continue
 
-            vol = float(item.get("quoteVolume", 0.0))
-            if vol < self.min_volume_try:
-                continue
-
-            chg_pct = float(item.get("priceChangePercent", 0.0))
-            last_price = float(item.get("lastPrice", 0.0))
-            high_price = float(item.get("highPrice", 0.0))
-            low_price = float(item.get("lowPrice", 0.0))
-
-            if last_price <= 0 or last_price < self.min_coin_price:
+            try:
+                if item.get("closeTime") is not None:
+                    source_age = now - float(item["closeTime"]) / 1000.0
+                    if not math.isfinite(source_age) or not 0 <= source_age <= self.max_source_age_seconds:
+                        continue
+                vol = float(item.get("quoteVolume", 0.0))
+                chg_pct = float(item.get("priceChangePercent", 0.0))
+                last_price = float(item.get("lastPrice", 0.0))
+                high_price = float(item.get("highPrice", 0.0))
+                low_price = float(item.get("lowPrice", 0.0))
+                if not all(math.isfinite(v) for v in (vol, chg_pct, last_price, high_price, low_price)):
+                    continue
+                if vol < 0 or last_price <= 0 or (not self.feature_only and (vol < self.min_volume_try or last_price < self.min_coin_price)):
+                    continue
+            except (TypeError, ValueError, OverflowError):
                 continue
 
             # 3-Katmanlı mikro tick ve hacim kaydı
@@ -539,6 +585,10 @@ class MarketScanner:
                 "high": high_price,
                 "low": low_price,
                 "updated_at": now,
+                "source": ep,
+                "source_close_time_ms": item.get("closeTime"),
+                "volume_surge_is_proxy": True,
+                "true_rvol_available": False,
                 "velocity_1m_pct": micro_metrics.get("velocity_1m_pct", 0.0),
                 "burst_ratio": micro_metrics.get("burst_ratio", 0.0),
                 "volume_surge_ratio": micro_metrics.get("volume_surge_ratio", 1.0),
@@ -548,6 +598,7 @@ class MarketScanner:
                 "is_dumping": micro_metrics.get("is_dumping", False),
                 "is_qualified_1m": micro_metrics.get("is_qualified", False),
                 "observation": self.tracker.get_info(tr_symbol),
+                "micro_metrics": dict(micro_metrics),
             }
             pair_dict["quant_score"] = self.calculate_quant_score(pair_dict, micro_metrics)
             valid_pairs.append(pair_dict)
@@ -558,15 +609,12 @@ class MarketScanner:
             -x.get("quant_score", 0.0)
         ))
 
-        if valid_pairs:
-            self.cached_top_pairs = valid_pairs
-            self.last_scan_time = now
+        self.cached_top_pairs = valid_pairs
+        self.last_scan_time = now
 
         pairs = self.cached_top_pairs or []
-        if only_uptrend and pairs:
+        if only_uptrend and pairs and not self.feature_only:
             filtered = [p for p in pairs if p["change_pct"] >= min_gain_pct and not p.get("is_dumping", False)]
-            if not filtered and min_gain_pct > 0:
-                filtered = [p for p in pairs if p["change_pct"] > 0 and not p.get("is_dumping", False)]
             return filtered[:limit] if (limit and limit > 0) else filtered
 
         return pairs[:limit] if (limit and limit > 0) else pairs

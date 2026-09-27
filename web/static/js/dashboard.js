@@ -29,6 +29,7 @@ async function fetchState() {
     if (!res.ok) return;
     const data = await res.json();
     updateUI(data);
+    await fetchDecisions(data);
   } catch (err) {
     console.error("State alma hatası:", err);
   } finally {
@@ -39,7 +40,47 @@ async function fetchState() {
 let currentMode = "simulation";
 let isActionPending = false;
 
+async function fetchDecisions(data) {
+  const panel = document.getElementById('jev-panel');
+  if (!panel) return;
+  panel.style.display = data.decision_engine === 'jev' ? '' : 'none';
+  if (data.decision_engine !== 'jev') return;
+  const decision = data.decision || {};
+  const summary = document.getElementById('jev-summary');
+  summary.textContent = `${data.is_running ? 'Çalışıyor' : 'Durduruldu'} · Portföy: ${decision.portfolio_policy || 'Karar bekleniyor'} · Model: ${decision.model || '-'} · Güven eşiği: %${((data.full_config?.decision?.min_action_confidence || 0) * 100).toFixed(0)}`;
+  try {
+    const res = await fetch('/api/decisions/recent?limit=12');
+    if (!res.ok) throw new Error('decision_feed_unavailable');
+    const result = await res.json();
+    const tbody = document.getElementById('jev-decisions');
+    tbody.replaceChildren();
+    const labels = {portfolio:'Portföy', candidate:'Aday', position:'Pozisyon', prebuy:'Alım teyidi'};
+    const reasons = {low_confidence:'Güven eşiğinin altında (eski kayıt)', 'low_confidence:action':'Alım/satım kararı güven eşiğinin altında', 'low_confidence:allocation':'Tutar seçimi güven eşiğinin altında', 'low_confidence:prebuy_authorization':'Son alım teyidinin güveni eşik altında', 'low_confidence:portfolio_action':'Portföy kararı güven eşiğinin altında', inference_failed_or_invalid:'Yanıt doğrulanamadı', jev_portfolio_pause:'JEV yeni alımları durdurdu', session_entry_blackout:'Oturum sonuna yaklaşıldı', decision_expired:'Kararın süresi doldu'};
+    for (const item of result.decisions) {
+      const row = document.createElement('tr');
+      const notes = [item.validation_error, ...(item.reasons || []).map(r => reasons[r] || r)];
+      if (item.allocation_confidence != null) notes.push(`Tutar: ${item.allocation_choice} · güven %${(item.allocation_confidence * 100).toFixed(0)}`);
+      if (item.allocation_fallback) notes.push(`Düşük tutar güveni: ${item.allocation_fallback.budget_try.toFixed(2)} TL ile son teyide gönderildi`);
+      if (item.retry_count) notes.push(`Tutarsız yanıt için ${item.retry_count} yeniden deneme`);
+      if (item.source !== 'model') notes.push(`Kaynak: ${item.source}`);
+      if (item.execution === 'filled') notes.push('Sanal işlem gerçekleşti');
+      const cells = [new Date(item.as_of * 1000).toLocaleTimeString('tr-TR'), `${labels[item.stage] || item.stage} ${item.symbol || ''}`, item.model_choice || '-', item.confidence == null ? '-' : `%${(item.confidence * 100).toFixed(0)}`, item.applied_action || (item.execution === 'filled' ? 'İşlem gerçekleşti' : 'Bekleniyor'), notes.filter(Boolean).join(' · ') || (item.valid ? 'Geçerli model yanıtı' : 'Yanıt bekleniyor')];
+      for (const value of cells) { const cell = document.createElement('td'); cell.textContent = value; row.appendChild(cell); }
+      tbody.appendChild(row);
+    }
+    if (!result.decisions.length) { const row = tbody.insertRow(); const cell = row.insertCell(); cell.colSpan = 6; cell.textContent = 'Henüz karar yok. Testi başlatın.'; }
+  } catch (error) {
+    summary.textContent += ' · Karar akışına erişilemiyor; gösterilen satırlar güncel olmayabilir.';
+  }
+}
+
 function updateUI(data) {
+    const decisionBadge = document.getElementById('badge-decision');
+    if (decisionBadge) {
+        const decision = data.decision || {};
+        decisionBadge.textContent = data.decision_engine === 'jev' ? `JEV · ${decision.model || 'OpenRouter'} · paper` : 'Legacy karar motoru';
+        decisionBadge.title = decision.faulted ? 'Karar motoru durdu; kayıtları inceleyin.' : 'Model kararı ve uygulanan işlem ayrı kaydedilir.';
+    }
   isRunning = data.is_running;
   currentMode = data.mode || "simulation";
   const isLive = currentMode === "live";
@@ -125,7 +166,7 @@ function updateUI(data) {
   // Piyasa Radarı Coinleri
   const radarContainer = document.getElementById("radar-coins-list");
   if (radarContainer && data.radar_top_coins && data.radar_top_coins.length > 0) {
-    radarContainer.innerHTML = data.radar_top_coins.map(c => {
+    radarContainer.innerHTML = data.radar_top_coins.slice(0, 12).map(c => {
       const chgColor = c.change_pct >= 0 ? "var(--success)" : "var(--danger)";
       const sign = c.change_pct > 0 ? "+" : "";
       const obs = c.observation || {};
@@ -215,7 +256,7 @@ function updateUI(data) {
   const m = data.market || {};
   if (m.price) {
     document.getElementById("val-price").innerText = `${m.price.toFixed(4)} TL`;
-    document.getElementById("sub-symbol").innerText = `${data.symbol} | Alış: ${m.bid?.toFixed(4)} / Satış: ${m.ask?.toFixed(4)}`;
+    document.getElementById("sub-symbol").innerText = `${m.symbol || data.symbol} | Alış: ${m.bid?.toFixed(4)} / Satış: ${m.ask?.toFixed(4)}`;
     document.getElementById("ind-rsi").innerText = m.rsi !== undefined ? m.rsi : "-";
     document.getElementById("ind-bb-upper").innerText = m.bb_upper ? m.bb_upper.toFixed(4) : "-";
     document.getElementById("ind-bb-lower").innerText = m.bb_lower ? m.bb_lower.toFixed(4) : "-";
@@ -417,9 +458,9 @@ async function startBot() {
 
   const duration = parseInt(document.getElementById("input-duration").value) || 15;
   const strategy = document.getElementById("select-strategy").value;
-  const symbol = document.getElementById("input-symbol").value;
   const budget = parseFloat(document.getElementById("input-budget").value) || 50;
   const autoCoin = document.getElementById("check-auto-coin") ? document.getElementById("check-auto-coin").checked : true;
+  const symbol = autoCoin ? "AUTO" : document.getElementById("input-symbol").value;
   const targetCoinsInput = document.getElementById("input-target-coins");
   const targetCoins = targetCoinsInput ? parseInt(targetCoinsInput.value) : 5;
   const obsInput = document.getElementById("input-obs-seconds");

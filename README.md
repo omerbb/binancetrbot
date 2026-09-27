@@ -1,3 +1,7 @@
+> **Fork (JEV sürümü):** Değişiklikler, dahil edilen veriler ve gözlemler için bkz. [FORK_NOTES.md](FORK_NOTES.md). Upstream: [cihancosgun/binancetrbot](https://github.com/cihancosgun/binancetrbot).
+
+> **JEV + OpenRouter entegrasyonu:** `config.jev.example.yaml` profili ve [JEV_INTEGRATION.md](JEV_INTEGRATION.md) ile başlayın. JEV bütün stratejik karar aşamalarında kullanılabilir; gerçek Binance emirleri bu modda kapalıdır. SQLite karar/sonuç kaydı, tarihsel replay ve eğitim JSONL dışa aktarımı dahil edilmiştir. Eski profiller `legacy` olarak kalır.
+
 # 🚀 Binance TR Otomatik Al-Sat Botu (Paper Trading & Canlı Mod)
 
 Bu bot; Binance TR üzerinde belirlediğiniz bütçe ve parametrelerle anlık canlı tahtayı ve piyasa radarını izleyerek otomatik al-sat işlemleri gerçekleştiren, kurumsal düzeyde risk yönetimi ve web kontrol paneline sahip algoritmik bir ticaret platformudur. 

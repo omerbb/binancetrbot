@@ -34,14 +34,16 @@ def test_strict_buy_signal_requirement():
     cfg.trading.min_observation_gain_pct = 0.0
 
     bot = BinanceTrBot(cfg)
-    bot.scanner.scan_top_active_pairs = lambda **kwargs: [{"symbol": "SOL_TRY", "change_pct": 5.0, "velocity_1m_pct": 0.0, "quant_score": 8.0}]
-    bot.scanner.cached_top_pairs = [{"symbol": "SOL_TRY", "change_pct": 5.0, "velocity_1m_pct": 0.0, "quant_score": 8.0}]
+    bot.scanner.scan_top_active_pairs = lambda **kwargs: [{"symbol": "SOL_TRY", "change_pct": 5.0, "velocity_1m_pct": 0.0, "quant_score": 8.0, "updated_at": time.time()}]
+    bot.scanner.cached_top_pairs = [{"symbol": "SOL_TRY", "change_pct": 5.0, "velocity_1m_pct": 0.0, "quant_score": 8.0, "updated_at": time.time()}]
     bot.scanner.watchlist.min_observation_seconds = 0  # Direkt onay
 
     # Mock engine ile HOLD sinyali üret
     mock_snap = {
         "symbol": "SOL_TRY",
         "price": 100.0,
+        "bid": 100.0, "ask": 100.05, "timestamp": time.time(),
+        "quote_valid": True, "features_ready": True,
         "rsi": 60.0,
         "bb_lower": 90.0,
         "bb_middle": 95.0,
@@ -59,11 +61,13 @@ def test_strict_buy_signal_requirement():
     assert len(bot.simulator.positions) == 0
 
     # Şimdi BUY sinyali mockla
-    bot.scanner.scan_top_active_pairs = lambda **kwargs: [{"symbol": "SOL_TRY", "change_pct": 5.0, "velocity_1m_pct": 0.5, "quant_score": 8.0}]
-    bot.scanner.cached_top_pairs = [{"symbol": "SOL_TRY", "change_pct": 5.0, "velocity_1m_pct": 0.5, "quant_score": 8.0}]
+    bot.scanner.scan_top_active_pairs = lambda **kwargs: [{"symbol": "SOL_TRY", "change_pct": 5.0, "velocity_1m_pct": 0.5, "quant_score": 8.0, "updated_at": time.time()}]
+    bot.scanner.cached_top_pairs = [{"symbol": "SOL_TRY", "change_pct": 5.0, "velocity_1m_pct": 0.5, "quant_score": 8.0, "updated_at": time.time()}]
     mock_buy_snap = {
         "symbol": "SOL_TRY",
         "price": 100.0,
+        "bid": 100.0, "ask": 100.05, "timestamp": time.time(),
+        "quote_valid": True, "features_ready": True,
         "rsi": 38.0,  # Oversold
         "bb_lower": 100.5,
         "bb_middle": 105.0,

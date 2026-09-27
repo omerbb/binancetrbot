@@ -1,0 +1,19 @@
+[Windows]
+Microsoft Windows 11 Pro
+[PowerShell]
+7.6.5
+[Python]
+Python 3.10.11
+[Pip check]
+No broken requirements found.
+[Packages]
+fastapi==0.141.1
+httpx==0.28.1
+Jinja2==3.1.6
+numpy==2.2.6
+pydantic==2.13.5
+pytest==9.1.1
+PyYAML==6.0.3
+requests==2.34.2
+uvicorn==0.53.0
+websockets==16.1.1

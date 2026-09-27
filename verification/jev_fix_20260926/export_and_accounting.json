@@ -1,0 +1,29 @@
+{
+  "fixture_default": {
+    "rows_written": 0,
+    "requests_seen": 310,
+    "fixtures_excluded": 310,
+    "without_valid_teacher": 0,
+    "incomplete_excluded": 0,
+    "layout": "questions"
+  },
+  "fixture_questions": {
+    "rows_written": 798,
+    "requests_seen": 310,
+    "fixtures_excluded": 0,
+    "without_valid_teacher": 0,
+    "incomplete_excluded": 0,
+    "layout": "questions"
+  },
+  "real_questions": {
+    "rows_written": 18,
+    "requests_seen": 8,
+    "fixtures_excluded": 0,
+    "without_valid_teacher": 2,
+    "incomplete_excluded": 0,
+    "layout": "questions"
+  },
+  "policy_version": "jev-spot-policy-v3",
+  "code_sha256": "6a858a8e00cc96b0dc9917945682aca9cd95a3fde80b22425904ec5f307ab904",
+  "replay_accounting_matches_before": true
+}

@@ -1,0 +1,21 @@
+usage: main.py [-h] [--mode {test,simulation,live}] [--config CONFIG] [--cli]
+               [--duration DURATION]
+               [--strategy {fee_recovery,adaptive_regime,rsi_bollinger,momentum_ema,grid_scalper,quick_test_scalper}]
+               [--symbol SYMBOL] [--port PORT] [--host HOST]
+
+Binance TR Al-Sat Botu (Test & Canlı Mod Desteği)
+
+options:
+  -h, --help            show this help message and exit
+  --mode {test,simulation,live}
+                        Çalışma modu:
+                          test       : Sanal bakiye ile test simülasyonu (Varsayılan: config.test.yaml)
+                          live       : Gerçek Binance TR API emirleri (Varsayılan: config.live.yaml)
+  --config CONFIG       Özel YAML yapılandırma dosya yolu (örn: config.test.yaml, config.live.yaml)
+  --cli                 Web paneli yerine Terminal CLI modunda çalıştır
+  --duration DURATION   CLI modu test/oturum süresi (dakika, varsayılan: 15)
+  --strategy {fee_recovery,adaptive_regime,rsi_bollinger,momentum_ema,grid_scalper,quick_test_scalper}
+                        Aktif ticaret stratejisi (varsayılan: fee_recovery - Komisyon Kurtaran)
+  --symbol SYMBOL       İşlem çifti (örn: AUTO, USDT_TRY, BTC_TRY, SOL_TRY)
+  --port PORT           Web sunucu portu (varsayılan: 8000)
+  --host HOST           Web sunucu host adresi (varsayılan: 127.0.0.1)

@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-09-22 16:03:09",
+  "config": {
+    "trading": {
+      "mode": "simulation",
+      "symbol": "AUTO (Radar Aktif)",
+      "budget_per_trade": 2000.0
+    },
+    "strategy": {
+      "active": "adaptive_regime",
+      "take_profit_pct": 1.2,
+      "stop_loss_pct": 0.85
+    },
+    "test": {
+      "duration_minutes": 15
+    }
+  },
+  "metrics": {
+    "initial_balance": 10000.0,
+    "final_equity": 10000.0,
+    "net_pnl": 0.0,
+    "net_pnl_pct": 0.0,
+    "total_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "win_rate": 0.0,
+    "gross_profit": 0,
+    "gross_loss": 0,
+    "profit_factor": 0.0,
+    "max_drawdown_pct": 0.0,
+    "max_drawdown_amount": 0.0,
+    "avg_trade_pnl": 0.0,
+    "avg_hold_time_seconds": 0.0,
+    "best_trade": 0.0,
+    "worst_trade": 0.0
+  },
+  "trades": [],
+  "open_positions": [],
+  "equity_curve": [
+    {
+      "time": 1790081505.4271858,
+      "equity": 10000.0
+    }
+  ],
+  "logs": [
+    "[15:23:19] 🚀 Bot başlatıldı! Mod: SIMULATION | Parite: AUTO | Süre: 15 dk",
+    "[15:23:19] JEV karar motoru: typesafe/jev-1.13 | Paper-only | kayıt: data/jev_demo.sqlite3",
+    "[15:25:54] 🛑 Bot durduruldu. Kalan açık test pozisyonları realize ediliyor...",
+    "[15:25:54] 📊 Rapor kaydedildi: reports\\test_run_20260922_152554.html",
+    "[15:25:54] 🚀 Bot başlatıldı! Mod: SIMULATION | Parite: AUTO | Süre: 15 dk",
+    "[15:25:54] JEV karar motoru: typesafe/jev-1.13 | Paper-only | kayıt: data/jev_demo.sqlite3",
+    "[15:40:59] ⏱️ Test süresi tamamlandı! Otomatik durduruluyor...",
+    "[15:40:59] 🛑 Bot durduruldu. Kalan açık test pozisyonları realize ediliyor...",
+    "[15:40:59] 📊 Rapor kaydedildi: reports\\test_run_20260922_154059.html",
+    "[15:49:18] 🚀 Bot başlatıldı! Mod: SIMULATION | Parite: AUTO (Radar Aktif) | Süre: 15 dk",
+    "[15:49:18] JEV karar motoru: typesafe/jev-1.13 | Paper-only | kayıt: data/jev_demo.sqlite3",
+    "[15:51:21] 🛑 Bot durduruldu. Kalan açık test pozisyonları realize ediliyor...",
+    "[15:51:21] 📊 Rapor kaydedildi: reports\\test_run_20260922_155121.html",
+    "[15:51:45] 🚀 Bot başlatıldı! Mod: SIMULATION | Parite: AUTO (Radar Aktif) | Süre: 15 dk",
+    "[15:51:45] JEV karar motoru: typesafe/jev-1.13 | Paper-only | kayıt: data/jev_demo.sqlite3",
+    "[16:03:09] 🛑 Bot durduruldu. Kalan açık test pozisyonları realize ediliyor..."
+  ]
+}

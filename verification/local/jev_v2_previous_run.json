@@ -1,0 +1,29 @@
+{
+  "run_id": "aaeb2bf7-c1df-4c8d-b7b4-b895dd8918e2",
+  "ended_at": 1790082189.5738301,
+  "report": {
+    "json": "reports\\test_run_20260922_160309.json",
+    "html": "reports\\test_run_20260922_160309.html",
+    "filename": "test_run_20260922_160309.html",
+    "url": "/reports/test_run_20260922_160309.html"
+  },
+  "portfolio": {
+    "initial_balance": 10000.0,
+    "cash": 10000.0,
+    "invested_value": 0,
+    "estimated_exit_fees": 0.0,
+    "equity_basis": "estimated_net_liquidation",
+    "total_equity": 10000.0,
+    "realized_pnl": 0,
+    "unrealized_pnl": 0,
+    "total_pnl": 0.0,
+    "total_pnl_pct": 0.0,
+    "open_positions_count": 0,
+    "open_positions": [],
+    "total_closed_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "win_rate": 0.0,
+    "closed_trades": []
+  }
+}

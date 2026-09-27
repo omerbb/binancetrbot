@@ -1,0 +1,22 @@
+xxxxxxxx..x.                                                             [100%]
+============================== warnings summary ===============================
+tests/test_jev_audit_20260926.py::test_authenticated_web_lifecycle_with_paper_fills
+  C:\Users\xxtra\OneDrive\Desktop\borsaprojesi\binancetrbot_jev_openrouter\binancetrbot-jev\.venv\lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/test_jev_audit_20260926.py::test_authenticated_web_lifecycle_with_paper_fills
+  C:\Users\xxtra\OneDrive\Desktop\borsaprojesi\binancetrbot_jev_openrouter\binancetrbot-jev\.venv\lib\site-packages\starlette\testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+XFAIL tests/test_jev_audit_20260926.py::test_loss_during_failed_position_decision_is_closed_in_same_step[low_confidence] - JEV-A01: fallback returns before post-inference hard-stop check
+XFAIL tests/test_jev_audit_20260926.py::test_loss_during_failed_position_decision_is_closed_in_same_step[timeout] - JEV-A01: fallback returns before post-inference hard-stop check
+XFAIL tests/test_jev_audit_20260926.py::test_loss_during_failed_position_decision_is_closed_in_same_step[invalid] - JEV-A01: fallback returns before post-inference hard-stop check
+XFAIL tests/test_jev_audit_20260926.py::test_loss_during_failed_position_decision_is_closed_in_same_step[expired] - JEV-A01: fallback returns before post-inference hard-stop check
+XFAIL tests/test_jev_audit_20260926.py::test_expired_position_action_cannot_execute_after_slow_quote[SELL] - JEV-A02: sell/rollover do not recheck expiry after quote refresh
+XFAIL tests/test_jev_audit_20260926.py::test_expired_position_action_cannot_execute_after_slow_quote[SELL_PARTIAL] - JEV-A02: sell/rollover do not recheck expiry after quote refresh
+XFAIL tests/test_jev_audit_20260926.py::test_expired_position_action_cannot_execute_after_slow_quote[ROLLOVER] - JEV-A02: sell/rollover do not recheck expiry after quote refresh
+XFAIL tests/test_jev_audit_20260926.py::test_stale_portfolio_cannot_seed_equity_outcome_reference - JEV-A03: stale starting portfolio still creates valid equity reference labels
+XFAIL tests/test_jev_audit_20260926.py::test_provider_does_not_start_retry_after_total_decision_deadline - JEV-A04: HTTP retry loop has no shared decision deadline
+3 passed, 9 xfailed, 2 warnings in 13.28s

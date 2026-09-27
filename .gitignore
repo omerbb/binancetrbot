@@ -53,3 +53,15 @@ logs/
 scratch/
 *.zip
 *.log
+
+# Credentials and decision datasets must not be committed.
+.env
+.env.*
+config.jev.yaml
+config.jev.demo.yaml
+local/
+data/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+exports/

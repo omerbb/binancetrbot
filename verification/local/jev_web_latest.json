@@ -1,0 +1,32 @@
+{
+  "captured_at": "2026-09-22T15:29:57.830493",
+  "run_id": "34d10935-3d21-4047-8a4d-e3c867c12535",
+  "running": true,
+  "remaining_seconds": 658,
+  "threshold": 0.3,
+  "portfolio": {
+    "initial_balance": 10000.0,
+    "cash": 10000.0,
+    "invested_value": 0,
+    "estimated_exit_fees": 0.0,
+    "equity_basis": "estimated_net_liquidation",
+    "total_equity": 10000.0,
+    "realized_pnl": 0,
+    "unrealized_pnl": 0,
+    "total_pnl": 0.0,
+    "total_pnl_pct": 0.0,
+    "open_positions_count": 0,
+    "open_positions": [],
+    "total_closed_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "win_rate": 0.0,
+    "closed_trades": []
+  },
+  "responses": 53,
+  "valid_responses": 52,
+  "validation_errors": {
+    "Choice is not a highest-probability allowed option: action": 1
+  },
+  "reported_api_cost_usd": 0.017721774000000003
+}

@@ -1,0 +1,35 @@
+[
+  {
+    "run_id": "34d10935-3d21-4047-8a4d-e3c867c12535",
+    "started_at": "2026-09-22T15:25:54.954247",
+    "ended": false,
+    "confidence_threshold": 0.3,
+    "symbol": "AUTO",
+    "responses": 41,
+    "valid_responses": 40,
+    "reported_api_cost_usd": 0.013671419999999998,
+    "execution_intents": 0
+  },
+  {
+    "run_id": "cc36190f-4347-436c-8403-29059fcf2567",
+    "started_at": "2026-09-22T15:23:19.887896",
+    "ended": true,
+    "confidence_threshold": 0.65,
+    "symbol": "AUTO",
+    "responses": 37,
+    "valid_responses": 37,
+    "reported_api_cost_usd": 0.012290544000000002,
+    "execution_intents": 0
+  },
+  {
+    "run_id": "f06db1c7-91ed-4468-ab3f-f9859ef6b4ff",
+    "started_at": "2026-09-22T15:03:53.207570",
+    "ended": true,
+    "confidence_threshold": 0.65,
+    "symbol": "SOL_TRY",
+    "responses": 30,
+    "valid_responses": 26,
+    "reported_api_cost_usd": 0.005499480000000001,
+    "execution_intents": 0
+  }
+]

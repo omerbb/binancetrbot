@@ -31,7 +31,9 @@ class RiskManager:
         fee_rate_pct: float = 0.10,
         portfolio_stop_loss_pct: float = 2.5,
         prevent_rebuy_churn: bool = False,
+        clock=None,
     ):
+        self._clock = clock or (lambda: time.time())
         self.take_profit_pct = take_profit_pct
         self.partial_tp_pct = partial_tp_pct
         self.partial_tp_ratio = partial_tp_ratio
@@ -100,7 +102,7 @@ class RiskManager:
         if current_positions_count >= self.max_open_positions:
             return False, f"Maksimum açık pozisyon limitine ulaşıldı ({self.max_open_positions})"
 
-        now = time.time()
+        now = self._clock()
 
         # Zarar kes sonrası ceza beklemesi (Düşen bıçağı tekrar tutmama)
         if symbol and symbol in self.symbol_loss_exit_times:
@@ -125,12 +127,12 @@ class RiskManager:
         return True, "Uygun"
 
     def record_trade_entry(self, symbol: Optional[str] = None) -> None:
-        self.last_trade_time = time.time()
+        self.last_trade_time = self._clock()
 
     def record_trade_exit(self, symbol: str, is_loss: bool = False) -> None:
         """Bir pozisyon kapandığında zaman damgasını kaydeder."""
         if symbol:
-            now = time.time()
+            now = self._clock()
             self.symbol_exit_times[symbol] = now
             if is_loss:
                 self.symbol_loss_exit_times[symbol] = now
@@ -140,17 +142,20 @@ class RiskManager:
         Açık pozisyonun kapatılması gerekip gerekmediğini profesyonel kurallarla değerlendirir.
         Döner: (kapatılmalı_mı, neden, anlık_kâr_yüzdesi)
         """
-        entry_price = float(position.get("entry_price", 0.0))
+        entry_price = float(position.get("risk_reference_price", position.get("entry_price", 0.0)))
         if current_price <= 0 or entry_price <= 0:
             return False, "Geçersiz fiyat verisi (0 veya negatif), çıkış değerlendirilmedi", 0.0
 
-        highest_price = float(position.get("highest_price", entry_price))
+        highest_price = float(position.get("risk_highest_price", position.get("highest_price", entry_price)))
         if highest_price <= 0:
             highest_price = entry_price
 
         if current_price > highest_price:
             highest_price = current_price
-            position["highest_price"] = highest_price
+            if "risk_reference_price" in position:
+                position["risk_highest_price"] = highest_price
+            else:
+                position["highest_price"] = highest_price
 
         # Anlık brüt kâr/zarar yüzdesi
         pnl_pct = ((current_price - entry_price) / entry_price) * 100.0
@@ -196,7 +201,7 @@ class RiskManager:
 
         # 5. Erken Momentum İptali (Early Invalidation Cut - Sahte Kırılım Koruması)
         entry_time = position.get("entry_time", 0.0)
-        holding_sec = time.time() - entry_time if entry_time > 0 else 0
+        holding_sec = self._clock() - entry_time if entry_time > 0 else 0
         early_cut_sl = max(0.65, eff_sl * 0.70)
         if holding_sec >= 45.0 and peak_gain_pct < 0.20 and pnl_pct <= -early_cut_sl:
             return True, f"🛑 ERKEN MOMENTUM KESİMİ: Sahte kırılım sınırlandı ({pnl_pct:.2f}% <= -{early_cut_sl:.2f}%), tam stop-loss'tan kaçınıldı", pnl_pct

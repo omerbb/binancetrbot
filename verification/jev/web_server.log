@@ -1,0 +1,5 @@
+12:56:22 [WARNING] Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPSConnection(host='www.binance.tr', port=443): Failed to establish a new connection: Web smoke: external internet disabled")': /open/v1/common/symbols
+12:56:23 [INFO] 🚀 Bot başlatıldı! Mod: SIMULATION | Parite: AUTO | Süre: 1 dk
+12:56:23 [INFO] JEV karar motoru: typesafe/jev-1.13 | Paper-only | kayıt: /mnt/data/binancetrbot_jev_verification/web_smoke/decisions.sqlite3
+12:56:23 [INFO] 🛑 Bot durduruldu. Kalan açık test pozisyonları realize ediliyor...
+12:56:23 [INFO] 📊 Rapor kaydedildi: reports/test_run_20260921_125623.html

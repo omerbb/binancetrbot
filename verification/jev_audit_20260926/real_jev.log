@@ -1,0 +1,37 @@
+{
+  "run_id": "2cffcf62-b833-45ed-ad08-3a0bfe8ddc59",
+  "frames_processed": 7,
+  "provider": "openrouter-systemone",
+  "fixture_not_jev": false,
+  "end_reason": "http_call_budget_reached",
+  "portfolio": {
+    "initial_balance": 10000.0,
+    "cash": 10000.0,
+    "invested_value": 0,
+    "estimated_exit_fees": 0.0,
+    "equity_basis": "estimated_net_liquidation",
+    "total_equity": 10000.0,
+    "realized_pnl": 0,
+    "unrealized_pnl": 0,
+    "total_pnl": 0.0,
+    "total_pnl_pct": 0.0,
+    "open_positions_count": 0,
+    "open_positions": [],
+    "total_closed_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "win_rate": 0.0,
+    "closed_trades": []
+  },
+  "journal": {
+    "decision_requests": 14,
+    "last_event": {
+      "kind": "run_ended",
+      "data_json": "{\"open_positions\":0,\"reason\":\"http_call_budget_reached\"}",
+      "event_time": 1770003960.0
+    }
+  },
+  "database_path": "verification/jev_audit_20260926/real_jev.sqlite3",
+  "http_calls_made": 12,
+  "http_call_limit": 12
+}

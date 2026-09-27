@@ -1,0 +1,447 @@
+{
+  "fixture_not_jev": true,
+  "external_network_disabled": true,
+  "actual_exchange_orders_sent": 0,
+  "actual_openrouter_inferences": 0,
+  "conversion": {
+    "frames": 150,
+    "synthetic_quotes": true,
+    "spread_bps": 10.0,
+    "current_bar_hlc_never_visible_to_same_frame": true
+  },
+  "replay": {
+    "run_id": "5b8bbe17-c53e-4ca3-8074-d0e486ef5627",
+    "frames_processed": 150,
+    "provider": "fixture-not-jev",
+    "fixture_not_jev": true,
+    "portfolio": {
+      "initial_balance": 10000.0,
+      "cash": 10029.42,
+      "invested_value": 0,
+      "estimated_exit_fees": 0.0,
+      "equity_basis": "estimated_net_liquidation",
+      "total_equity": 10029.42,
+      "realized_pnl": 29.42,
+      "unrealized_pnl": 0,
+      "total_pnl": 29.42,
+      "total_pnl_pct": 0.29,
+      "open_positions_count": 0,
+      "open_positions": [],
+      "total_closed_trades": 10,
+      "winning_trades": 10,
+      "losing_trades": 0,
+      "win_rate": 100.0,
+      "closed_trades": [
+        {
+          "order_id": "ca9372e7",
+          "position_id": "e88531b5",
+          "symbol": "SOL_TRY",
+          "side": "SELL",
+          "entry_price": 108.01057055612999,
+          "exit_price": 108.536061191815,
+          "quantity": 9.24909474004536,
+          "gross_return": 1003.8603126744573,
+          "net_return": 1002.8564523617829,
+          "invested_cost": 1000.0,
+          "total_fees": 2.0038603126744574,
+          "net_pnl": 2.8564523617828854,
+          "pnl_pct": 0.2856452361782886,
+          "hold_time_seconds": 1200.0,
+          "timestamp": 1770008940.0,
+          "reason": "JEV_SELL",
+          "is_win": true,
+          "is_partial": false,
+          "decision_id": "110b05ef-4b83-45c8-81de-60c24369e879",
+          "decision_source": "fixture",
+          "run_id": "5b8bbe17-c53e-4ca3-8074-d0e486ef5627"
+        },
+        {
+          "order_id": "b9904b75",
+          "position_id": "0ea16adf",
+          "symbol": "SOL_TRY",
+          "side": "SELL",
+          "entry_price": 107.25583730809498,
+          "exit_price": 107.783735382895,
+          "quantity": 9.314178370827019,
+          "gross_return": 1003.9169368303035,
+          "net_return": 1002.9130198934732,
+          "invested_cost": 1000.0,
+          "total_fees": 2.0039169368303034,
+          "net_pnl": 2.9130198934732334,
+          "pnl_pct": 0.2913019893473234,
+          "hold_time_seconds": 300.0,
+          "timestamp": 1770007680.0,
+          "reason": "JEV_SELL",
+          "is_win": true,
+          "is_partial": false,
+          "decision_id": "2c73dde3-9ac5-49c4-9f66-0f4bb710e9d6",
+          "decision_source": "fixture",
+          "run_id": "5b8bbe17-c53e-4ca3-8074-d0e486ef5627"
+        },
+        {
+          "order_id": "92e0e0ba",
+          "position_id": "a7c19780",
+          "symbol": "SOL_TRY",
+          "side": "SELL",
+          "entry_price": 106.52316248375999,
+          "exit_price": 107.03233861922001,
+          "quantity": 9.378242034001786,
+          "gross_return": 1003.7751770362819,
+          "net_return": 1002.7714018592457,
+          "invested_cost": 1000.0,
+          "total_fees": 2.0037751770362817,
+          "net_pnl": 2.771401859245657,
+          "pnl_pct": 0.2771401859245657,
+          "hold_time_seconds": 1200.0,
+          "timestamp": 1770007320.0,
+          "reason": "JEV_SELL",
+          "is_win": true,
+          "is_partial": false,
+          "decision_id": "bae05a29-d469-4478-a678-bf20cc7e8ca1",
+          "decision_source": "fixture",
+          "run_id": "5b8bbe17-c53e-4ca3-8074-d0e486ef5627"
+        },
+        {
+          "order_id": "7b00e449",
+          "position_id": "c439edb2",
+          "symbol": "SOL_TRY",
+          "side": "SELL",
+          "entry_price": 105.80533324850998,
+          "exit_price": 106.34833641141002,
+          "quantity": 9.441868092354111,
+          "gross_return": 1004.1269642378331,
+          "net_return": 1003.1228372735953,
+          "invested_cost": 1000.0,
+          "total_fees": 2.004126964237833,
+          "net_pnl": 3.122837273595337,
+          "pnl_pct": 0.3122837273595337,
+          "hold_time_seconds": 360.0,
+          "timestamp": 1770006060.0,
+          "reason": "JEV_SELL",
+          "is_win": true,
+          "is_partial": false,
+          "decision_id": "1e9fa39a-d73c-4e12-9c9e-0e464a3524b3",
+          "decision_source": "fixture",
+          "run_id": "5b8bbe17-c53e-4ca3-8074-d0e486ef5627"
+        },
+        {
+          "order_id": "dc5141b0",
+          "position_id": "d261a4bc",
+          "symbol": "SOL_TRY",
+          "side": "SELL",
+          "entry_price": 105.00037838221499,
+          "exit_price": 105.56985119873501,
+          "quantity": 9.51425142834734,
+          "gross_return": 1004.4181075579806,
+          "net_return": 1003.4136894504227,
+          "invested_cost": 1000.0,
+          "total_fees": 2.0044181075579806,
+          "net_pnl": 3.4136894504226802,
+          "pnl_pct": 0.341368945042268,
+          "hold_time_seconds": 360.0,
+          "timestamp": 1770005640.0,
+          "reason": "JEV_SELL",
+          "is_win": true,
+          "is_partial": false,
+          "decision_id": "d967e53e-49d4-4999-a885-1e0b021e8b41",
+          "decision_source": "fixture",
+          "run_id": "5b8bbe17-c53e-4ca3-8074-d0e486ef5627"
+        },
+        {
+          "order_id": "f1787935",
+          "position_id": "b880c5bc",
+          "symbol": "SOL_TRY",
+          "side": "SELL",
+          "entry_price": 104.33127112577999,
+          "exit_price": 104.82013293539,
+          "quantity": 9.575269132833844,
+          "gross_return": 1003.6809833957801,
+          "net_return": 1002.6773024123844,
+          "invested_cost": 1000.0,
+          "total_fees": 2.00368098339578,
+          "net_pnl": 2.6773024123843925,
+          "pnl_pct": 0.26773024123843925,
+          "hold_time_seconds": 1200.0,
+          "timestamp": 1770005220.0,
+          "reason": "JEV_SELL",
+          "is_win": true,
+          "is_partial": false,
+          "decision_id": "fecef7a0-27b7-4cd7-af82-5b3a4a9d878f",
+          "decision_source": "fixture",
+          "run_id": "5b8bbe17-c53e-4ca3-8074-d0e486ef5627"
+        },
+        {
+          "order_id": "86ef3449",
+          "position_id": "5fd5a35a",
+          "symbol": "SOL_TRY",
+          "side": "SELL",
+          "entry_price": 103.586387059875,
+          "exit_price": 104.11514211713501,
+          "quantity": 9.644124371502194,
+          "gross_return": 1004.0993795342763,
+          "net_return": 1003.095280154742,
+          "invested_cost": 1000.0,
+          "total_fees": 2.004099379534276,
+          "net_pnl": 3.0952801547419995,
+          "pnl_pct": 0.30952801547419995,
+          "hold_time_seconds": 300.0,
+          "timestamp": 1770003960.0,
+          "reason": "JEV_SELL",
+          "is_win": true,
+          "is_partial": false,
+          "decision_id": "a55987ac-45c2-4f5e-b51a-e9951c8f8bb9",
+          "decision_source": "fixture",
+          "run_id": "5b8bbe17-c53e-4ca3-8074-d0e486ef5627"
+        },
+        {
+          "order_id": "40b890fb",
+          "position_id": "43c99edf",
+          "symbol": "SOL_TRY",
+          "side": "SELL",
+          "entry_price": 102.87051917481,
+          "exit_price": 103.36049338026001,
+          "quantity": 9.711237077576897,
+          "gross_return": 1003.7582556710224,
+          "net_return": 1002.7544974153514,
+          "invested_cost": 1000.0,
+          "total_fees": 2.0037582556710225,
+          "net_pnl": 2.754497415351352,
+          "pnl_pct": 0.27544974153513524,
+          "hold_time_seconds": 1080.0,
+          "timestamp": 1770003600.0,
+          "reason": "JEV_SELL",
+          "is_win": true,
+          "is_partial": false,
+          "decision_id": "9cf2945c-931e-4571-8e57-8add970492f5",
+          "decision_source": "fixture",
+          "run_id": "5b8bbe17-c53e-4ca3-8074-d0e486ef5627"
+        },
+        {
+          "order_id": "19bfd96d",
+          "position_id": "4b4f8ed9",
+          "symbol": "SOL_TRY",
+          "side": "SELL",
+          "entry_price": 102.26404613983499,
+          "exit_price": 102.737861062155,
+          "quantity": 9.768829199599397,
+          "gross_return": 1003.6286170483658,
+          "net_return": 1002.6249884313174,
+          "invested_cost": 1000.0,
+          "total_fees": 2.0036286170483657,
+          "net_pnl": 2.6249884313174334,
+          "pnl_pct": 0.2624988431317434,
+          "hold_time_seconds": 420.0,
+          "timestamp": 1770002460.0,
+          "reason": "JEV_SELL",
+          "is_win": true,
+          "is_partial": false,
+          "decision_id": "85f7d76e-b077-48dd-81b1-cc968a0a6a03",
+          "decision_source": "fixture",
+          "run_id": "5b8bbe17-c53e-4ca3-8074-d0e486ef5627"
+        },
+        {
+          "order_id": "919e5a96",
+          "position_id": "dc171d11",
+          "symbol": "SOL_TRY",
+          "side": "SELL",
+          "entry_price": 101.50978620834,
+          "exit_price": 102.03799496026001,
+          "quantity": 9.841415663605472,
+          "gross_return": 1004.198321884799,
+          "net_return": 1003.1941235629142,
+          "invested_cost": 1000.0,
+          "total_fees": 2.004198321884799,
+          "net_pnl": 3.1941235629142284,
+          "pnl_pct": 0.31941235629142284,
+          "hold_time_seconds": 300.0,
+          "timestamp": 1770001980.0,
+          "reason": "JEV_SELL",
+          "is_win": true,
+          "is_partial": false,
+          "decision_id": "fd3377ba-4083-4b9d-b5b9-da43e4491d91",
+          "decision_source": "fixture",
+          "run_id": "5b8bbe17-c53e-4ca3-8074-d0e486ef5627"
+        }
+      ]
+    },
+    "journal": {
+      "decision_requests": 310,
+      "last_event": {
+        "kind": "run_ended",
+        "data_json": "{\"open_positions\":0,\"reason\":\"historical_data_end\"}",
+        "event_time": 1770008940.0
+      }
+    },
+    "database_path": "/mnt/data/binancetrbot_jev_verification/fixture_decisions.sqlite3"
+  },
+  "exports": {
+    "requests": {
+      "rows_written": 310,
+      "requests_seen": 310,
+      "fixtures_excluded": 0,
+      "without_valid_teacher": 0,
+      "incomplete_excluded": 0,
+      "layout": "requests"
+    },
+    "questions": {
+      "rows_written": 798,
+      "requests_seen": 310,
+      "fixtures_excluded": 0,
+      "without_valid_teacher": 0,
+      "incomplete_excluded": 0,
+      "layout": "questions"
+    },
+    "sft": {
+      "rows_written": 310,
+      "requests_seen": 310,
+      "fixtures_excluded": 0,
+      "without_valid_teacher": 0,
+      "incomplete_excluded": 0,
+      "layout": "sft"
+    },
+    "default_fixture_exclusion": {
+      "rows_written": 0,
+      "requests_seen": 310,
+      "fixtures_excluded": 310,
+      "without_valid_teacher": 0,
+      "incomplete_excluded": 0,
+      "layout": "questions"
+    }
+  },
+  "outcome_counts": [
+    [
+      "market_markout",
+      "censored",
+      21
+    ],
+    [
+      "market_markout",
+      "observed",
+      459
+    ],
+    [
+      "portfolio_equity",
+      "censored",
+      21
+    ],
+    [
+      "portfolio_equity",
+      "observed",
+      429
+    ],
+    [
+      "position:0ea16adf",
+      "observed",
+      7
+    ],
+    [
+      "position:43c99edf",
+      "observed",
+      20
+    ],
+    [
+      "position:4b4f8ed9",
+      "observed",
+      9
+    ],
+    [
+      "position:5fd5a35a",
+      "observed",
+      7
+    ],
+    [
+      "position:a7c19780",
+      "observed",
+      22
+    ],
+    [
+      "position:b880c5bc",
+      "observed",
+      22
+    ],
+    [
+      "position:c439edb2",
+      "observed",
+      8
+    ],
+    [
+      "position:d261a4bc",
+      "observed",
+      8
+    ],
+    [
+      "position:dc171d11",
+      "observed",
+      7
+    ],
+    [
+      "position:e88531b5",
+      "observed",
+      22
+    ]
+  ],
+  "event_counts": [
+    [
+      "decision_disposition",
+      310
+    ],
+    [
+      "decision_requested",
+      310
+    ],
+    [
+      "execution_intent",
+      20
+    ],
+    [
+      "execution_result",
+      30
+    ],
+    [
+      "inference_attempt",
+      310
+    ],
+    [
+      "model_response",
+      310
+    ],
+    [
+      "outcome_censored",
+      42
+    ],
+    [
+      "outcome_updated",
+      888
+    ],
+    [
+      "position_linked",
+      30
+    ],
+    [
+      "position_outcome",
+      132
+    ],
+    [
+      "run_ended",
+      1
+    ],
+    [
+      "run_started",
+      1
+    ]
+  ],
+  "code_sha256": "a34a30d4299d2c36ec7c0af07d4c9c078f3e53f03932290e9971859fee6ed7a6",
+  "python": "3.13.5",
+  "packages": {
+    "requests": "2.32.5",
+    "fastapi": "0.128.2",
+    "pydantic": "2.13.4",
+    "pytest": "9.0.2",
+    "pyyaml": "6.0.3",
+    "numpy": "2.3.5",
+    "httpx": "0.28.1"
+  },
+  "outcome_pending_after_run": 0,
+  "unclosed_positions": 0,
+  "sqlite_integrity": "ok"
+}

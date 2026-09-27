@@ -1,0 +1,32 @@
+=================================================================
+🚀 Binance TR Bot Web Paneli Başlatılıyor...
+⚙️ Çalışma Modu   : 🟢 TEST (SİMÜLASYON)
+📁 Yapılandırma   : config.jev.demo.yaml
+🌐 Tarayıcınızda açın: http://127.0.0.1:8000
+=================================================================
+INFO:     127.0.0.1:53636 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:53637 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:53638 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:53640 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:42886 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5944 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5945 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5946 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5947 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5948 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5951 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5952 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5953 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5954 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5955 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5956 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5957 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5958 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5959 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5960 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:5964 - "POST /api/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:5964 - "GET /api/decisions/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:5964 - "GET /api/decisions/recent HTTP/1.1" 200 OK
+INFO:     127.0.0.1:5966 - "POST /api/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:5966 - "GET /api/decisions/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:5966 - "GET /api/decisions/recent HTTP/1.1" 200 OK

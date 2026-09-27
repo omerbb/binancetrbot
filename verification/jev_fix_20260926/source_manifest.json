@@ -1,0 +1,11 @@
+{
+  "decision/controller.py": "45e909ef56a0f0f0725fd4e32c0e3fc26fab9a33178d7bb5fcfcbae1acf8a4bd",
+  "decision/openrouter.py": "0af5c20641be56d1605ac8a3a9177e8a31be90e93c5424c3b9b6cf3e613448fe",
+  "decision/contracts.py": "045c4e20d36d08e5c0e6f9ef5ff777e1761729ad8872f61230b271ea834e795c",
+  "decision/journal.py": "e9d85335e862e59094ebb31d6a83601ca28ec4065d6ff5bb1ce0ead7863b2fc1",
+  "decision/inference.py": "2777ceaa6eed0716f88215e32d44a36fa368c557236dc0ca7014a7815bf314ba",
+  "decision/replay.py": "1cf4bbf063ef8e532574cdff5e329250f488313c51fcd69e23a80ecd16b5ac06",
+  "web/app.py": "e663ddf4d0570d3912ded48121a5efda57fe9a7ff7c7073d27ab22a17602b0e4",
+  "tests/test_jev_audit_20260926.py": "5c8d55f01b19039363f6b036286970555df52915c095820247141733907f46d8",
+  "tests/test_jev_deadline_safety.py": "2bb9c7ce821d655926cebf108c85da930ba09082e009e5e993d0a49f753acfe4"
+}

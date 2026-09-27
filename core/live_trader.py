@@ -14,7 +14,7 @@ class LiveTraderEngine:
     API Key ve Secret ile gerçek alım ve satım emirlerini iletir, bakiye ve pozisyonları kontrol eder.
     Cüzdan ile çift yönlü senkronizasyon ve disk kalıcılığı sağlar.
     """
-    def __init__(self, client: BinanceTrClient, symbol: str = "AUTO", max_open_positions: int = 5):
+    def __init__(self, client: BinanceTrClient, symbol: str = "AUTO", max_open_positions: int = 5, *, sync_on_start: bool = True):
         self.client = client
         self.symbol = symbol
         self.max_open_positions = max_open_positions
@@ -29,10 +29,12 @@ class LiveTraderEngine:
         self._last_balance_time: float = 0.0
 
         # 1. Kayıtlı pozisyon ve işlem geçmişini diskten yükle
-        self._load_from_disk()
+        if sync_on_start:
+            self._load_from_disk()
 
         # 2. Binance TR cüzdanındaki gerçek varlıklarla senkronize et
-        self.sync_with_wallet()
+        if sync_on_start:
+            self.sync_with_wallet()
 
     def _save_to_disk(self) -> None:
         try:

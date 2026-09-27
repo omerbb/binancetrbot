@@ -1,0 +1,243 @@
+[
+  {
+    "database": "verification/jev_fix_20260926/real_jev.sqlite3",
+    "integrity": "ok",
+    "foreign_key_violations": 0,
+    "runs": [
+      {
+        "run_id": "71d6c908-7d92-4d9c-b09b-e1c9b8191b07",
+        "started_at": 1770003600.0,
+        "ended_at": 1770003900.0,
+        "end_reason": "http_call_budget_reached",
+        "provider": "openrouter-systemone",
+        "environment": "historical_replay",
+        "policy_version": "jev-spot-policy-v3",
+        "fixture": false,
+        "confidence_threshold": 0.3,
+        "code_sha256": "82d1a85ef4d9209bf957ea7319c1edc36aefd6ad8f1f3ab99d774cd69cb29031"
+      }
+    ],
+    "decisions": 12,
+    "stages": {
+      "portfolio": 6,
+      "candidate": 6
+    },
+    "events": {
+      "run_started": 1,
+      "decision_requested": 12,
+      "inference_attempt": 13,
+      "model_response": 12,
+      "valid_model_response": 11,
+      "decision_disposition": 12,
+      "decision_retry": 1,
+      "outcome_updated": 12,
+      "inference_failed": 1,
+      "outcome_censored": 24,
+      "run_ended": 1
+    },
+    "errors": {
+      "Choice is not a highest-probability allowed option: allocation": 1,
+      "http_call_budget_reached": 1
+    },
+    "dispositions": {
+      "PAUSE_ENTRIES:fallback": 2,
+      "WAIT:fallback": 5,
+      "PAUSE_ENTRIES:applied": 4,
+      "WAIT:applied": 1
+    },
+    "overrides": {
+      "low_confidence:portfolio_action": 2,
+      "low_confidence:action": 4,
+      "inference_failed_or_invalid": 1
+    },
+    "raw_choices_including_invalid": {
+      "portfolio_action:PAUSE_ENTRIES": 6,
+      "action:WAIT": 5,
+      "action:SKIP": 1
+    },
+    "models": {
+      "typesafe/jev-1.13-20260917": 12
+    },
+    "http_attempt_statuses": {
+      "200": 12,
+      "protocol_error": 1
+    },
+    "reported_cost_usd": 0.0026098379999999997,
+    "response_latency_ms": {
+      "n": 12,
+      "mean": 599.0,
+      "p95": 1094.0,
+      "max": 1094.0
+    },
+    "unresolved_intents": 0,
+    "fills": {},
+    "outcomes": {
+      "censored": 24,
+      "observed": 12
+    },
+    "ledger": []
+  },
+  {
+    "database": "verification/jev_fix_20260926/real_jev_final.sqlite3",
+    "integrity": "ok",
+    "foreign_key_violations": 0,
+    "runs": [
+      {
+        "run_id": "e6b4edfb-eac3-4ea2-8616-7ea2a8fe27d0",
+        "started_at": 1770003600.0,
+        "ended_at": 1770003780.0,
+        "end_reason": "http_call_budget_reached",
+        "provider": "openrouter-systemone",
+        "environment": "historical_replay",
+        "policy_version": "jev-spot-policy-v3",
+        "fixture": false,
+        "confidence_threshold": 0.3,
+        "code_sha256": "6a858a8e00cc96b0dc9917945682aca9cd95a3fde80b22425904ec5f307ab904"
+      }
+    ],
+    "decisions": 8,
+    "stages": {
+      "portfolio": 4,
+      "candidate": 4
+    },
+    "events": {
+      "run_started": 1,
+      "decision_requested": 8,
+      "inference_attempt": 8,
+      "model_response": 6,
+      "valid_model_response": 6,
+      "decision_disposition": 8,
+      "outcome_updated": 6,
+      "inference_failed": 2,
+      "outcome_censored": 18,
+      "run_ended": 1
+    },
+    "errors": {
+      "http_call_budget_reached": 2
+    },
+    "dispositions": {
+      "PAUSE_ENTRIES:applied": 3,
+      "WAIT:fallback": 3,
+      "WAIT:applied": 1,
+      "PAUSE_ENTRIES:fallback": 1
+    },
+    "overrides": {
+      "low_confidence:action": 2,
+      "inference_failed_or_invalid": 2
+    },
+    "raw_choices_including_invalid": {
+      "portfolio_action:PAUSE_ENTRIES": 3,
+      "action:WAIT": 3
+    },
+    "models": {
+      "typesafe/jev-1.13-20260917": 6
+    },
+    "http_attempt_statuses": {
+      "200": 6,
+      "protocol_error": 2
+    },
+    "reported_cost_usd": 0.0013049819999999999,
+    "response_latency_ms": {
+      "n": 6,
+      "mean": 598.8333333333334,
+      "p95": 781.0,
+      "max": 781.0
+    },
+    "unresolved_intents": 0,
+    "fills": {},
+    "outcomes": {
+      "censored": 18,
+      "observed": 6
+    },
+    "ledger": []
+  },
+  {
+    "database": "verification/jev_fix_20260926/fixture_final.sqlite3",
+    "integrity": "ok",
+    "foreign_key_violations": 0,
+    "runs": [
+      {
+        "run_id": "a880e35a-f523-4a9b-b5f7-48a24a0ac0a4",
+        "started_at": 1770000000.0,
+        "ended_at": 1770008940.0,
+        "end_reason": "historical_data_end",
+        "provider": "fixture-not-jev",
+        "environment": "historical_replay",
+        "policy_version": "jev-spot-policy-v3",
+        "fixture": true,
+        "confidence_threshold": 0.65,
+        "code_sha256": "6a858a8e00cc96b0dc9917945682aca9cd95a3fde80b22425904ec5f307ab904"
+      }
+    ],
+    "decisions": 310,
+    "stages": {
+      "portfolio": 150,
+      "candidate": 38,
+      "prebuy": 10,
+      "position": 112
+    },
+    "events": {
+      "run_started": 1,
+      "decision_requested": 310,
+      "inference_attempt": 310,
+      "model_response": 310,
+      "valid_model_response": 310,
+      "decision_disposition": 310,
+      "outcome_updated": 888,
+      "execution_intent": 20,
+      "position_linked": 30,
+      "execution_result": 30,
+      "position_outcome": 132,
+      "outcome_censored": 42,
+      "run_ended": 1
+    },
+    "errors": {},
+    "dispositions": {
+      "CONTINUE:applied": 150,
+      "OBSERVE:applied": 28,
+      "BUY_PROPOSED:delegated_to_prebuy": 10,
+      "BUY:filled": 10,
+      "HOLD:applied": 102,
+      "SELL:filled": 10
+    },
+    "overrides": {},
+    "raw_choices_including_invalid": {
+      "portfolio_action:CONTINUE": 150,
+      "action:OBSERVE": 28,
+      "action:BUY": 10,
+      "prebuy_authorization:EXECUTE": 10,
+      "action:HOLD": 102,
+      "action:SELL": 10
+    },
+    "models": {
+      "fixture/deterministic-test-v1": 310
+    },
+    "http_attempt_statuses": {
+      "fixture": 310
+    },
+    "reported_cost_usd": 0.0,
+    "response_latency_ms": {
+      "n": 310,
+      "mean": 1.267741935483871,
+      "p95": 16.0,
+      "max": 16.0
+    },
+    "unresolved_intents": 0,
+    "fills": {
+      "fills_BUY": 10,
+      "fills_SELL": 10
+    },
+    "outcomes": {
+      "censored": 42,
+      "observed": 1020
+    },
+    "ledger": [
+      {
+        "status": "closed",
+        "positions": 10,
+        "pnl_try": 29.4235928152292,
+        "fees_try": 20.039463055871103
+      }
+    ]
+  }
+]

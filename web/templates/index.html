@@ -21,7 +21,8 @@
         <button type="button" id="btn-open-settings" class="badge" style="cursor: pointer; background: rgba(245, 158, 11, 0.18); color: var(--accent); border: 1px solid rgba(245, 158, 11, 0.4); font-size: 13px; padding: 7px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" title="Tüm Bot Yapılandırmasını Düzenle">
           ⚙️ Tüm Ayarlar
         </button>
-        <span id="badge-mode" class="badge" style="background: rgba(245, 158, 11, 0.2); color: var(--accent);">MOD: SANAL PARA (PAPER TRADING)</span>
+        <span id="badge-decision" class="badge">Karar motoru</span>
+                    <span id="badge-mode" class="badge" style="background: rgba(245, 158, 11, 0.2); color: var(--accent);">MOD: SANAL PARA (PAPER TRADING)</span>
         <span id="status-badge" class="badge badge-stopped">
           <span class="badge-pulse"></span> BEKLEMEDE
         </span>
@@ -47,7 +48,7 @@
       <div class="card">
         <div class="card-title">Toplam Net Kâr / Zarar</div>
         <div id="val-pnl" class="card-value" style="color: var(--text-muted);">0.00 TL (0.00%)</div>
-        <div class="card-sub">Komisyonlar Düşülmüş</div>
+        <div class="card-sub">İşlem komisyonları dahil · OpenRouter maliyeti hariç</div>
       </div>
       <div class="card">
         <div class="card-title">Kazanma Oranı (Win Rate)</div>
@@ -55,6 +56,16 @@
         <div id="sub-trades-count" class="card-sub">0 Kazanç / 0 Kayıp</div>
       </div>
     </div>
+
+    <section id="jev-panel" class="card" style="margin-bottom:20px;display:none">
+      <h3 style="color:var(--accent);margin-bottom:10px">JEV · Canlı Karar Akışı</h3>
+      <p id="jev-summary" style="margin-bottom:8px"></p>
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">Canlı piyasa verisi · Sanal işlemler · Model güveni kâr olasılığı değildir. Bekleme kararı da burada görünür.</p>
+      <div style="overflow:auto;max-height:270px">
+        <table><thead><tr><th>Zaman</th><th>Aşama / Parite</th><th>JEV seçimi</th><th>Güven</th><th>Uygulanan</th><th>Açıklama</th></tr></thead>
+        <tbody id="jev-decisions"><tr><td colspan="6">Henüz karar yok.</td></tr></tbody></table>
+      </div>
+    </section>
 
     <!-- Main Grid -->
     <div class="main-grid">
@@ -825,6 +836,6 @@
   <!-- Toast Container -->
   <div id="toast-container" class="toast-container"></div>
 
-  <script src="/static/js/dashboard.js"></script>
+  <script src="/static/js/dashboard.js?v=jev-policy-v2-20260922"></script>
 </body>
 </html>

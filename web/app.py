@@ -1,6 +1,8 @@
 import os
 import secrets
-from fastapi import FastAPI, Request
+import copy
+import json
+from fastapi import FastAPI, Request, Body
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -26,6 +28,11 @@ bot_instance = BinanceTrBot()
 async def lifespan(app: FastAPI):
     yield
     bot_instance.is_running = False
+    if getattr(bot_instance, "_decision_controller", None) is not None:
+        try:
+            bot_instance._decision_controller.end_session(reason="web_shutdown", liquidate=False)
+        except Exception:
+            pass
     if hasattr(bot_instance, "client") and hasattr(bot_instance.client, "session"):
         try:
             bot_instance.client.session.close()
@@ -54,25 +61,24 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
+    async def authorized_forward():
+        path = request.url.path
+        locked = bot_instance.is_running and (bot_instance.config.decision.engine == "jev" or getattr(bot_instance, "_decision_controller", None) is not None)
+        if locked and request.method == "POST" and (path.startswith("/api/config") or path == "/api/start"):
+            return JSONResponse(status_code=409, content={"status": "error", "message": "JEV oturumu çalışırken ayarlar değiştirilemez. Önce durdurun; yeni oturum sürümlenerek açılır."})
+        return await call_next(request)
+
     auth_cfg = getattr(bot_instance.config, "auth", None)
     if not auth_cfg or not getattr(auth_cfg, "enabled", True):
-        return await call_next(request)
-
+        return await authorized_forward()
     path = request.url.path
-
-    if (
-        path.startswith("/static")
-        or path in ("/login", "/api/login", "/favicon.ico")
-    ):
-        return await call_next(request)
-
+    if path.startswith("/static") or path in ("/login", "/api/login", "/favicon.ico"):
+        return await authorized_forward()
     token = request.cookies.get("session_token")
     if token and token in active_sessions:
-        return await call_next(request)
-
+        return await authorized_forward()
     if path.startswith("/api/"):
         return JSONResponse(status_code=401, content={"status": "error", "message": "Giriş yapmanız gerekiyor."})
-
     return RedirectResponse(url="/login", status_code=303)
 
 class StartRequest(BaseModel):
@@ -117,6 +123,7 @@ class FullConfigRequest(BaseModel):
     server: Optional[Dict[str, Any]] = None
     auth: Optional[Dict[str, Any]] = None
     loaded_config_path: Optional[str] = None
+    decision: Optional[Dict[str, Any]] = None
 
 class SwitchModeRequest(BaseModel):
     mode: str
@@ -198,9 +205,17 @@ async def update_full_config(req: FullConfigRequest):
     Tüm ayarları kaydeder, YAML dosyasına yazar ve bota anında uygular.
     """
     payload = req.model_dump(exclude_unset=True)
-    update_config_from_dict(bot_instance.config, payload)
-    saved_path = save_config(bot_instance.config)
-    bot_instance.apply_config()
+    candidate = copy.deepcopy(bot_instance.config)
+    try:
+        update_config_from_dict(candidate, payload)
+        if candidate.decision.engine == "jev":
+            from decision.contracts import validate_config
+            validate_config(candidate)
+            if candidate.trading.mode != "simulation": raise ValueError("JEV yalnızca simulation/replay modunda çalışır.")
+        bot_instance.apply_config(candidate)
+        saved_path = save_config(candidate)
+    except (ValueError, TypeError) as exc:
+        return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
     return {
         "status": "success",
         "message": f"Tüm ayarlar başarıyla kaydedildi ({saved_path}) ve bota uygulandı.",
@@ -298,42 +313,65 @@ async def test_api_connection(req: TestApiRequest):
 
 @app.post("/api/start")
 async def start_bot(req: StartRequest):
+    candidate = copy.deepcopy(bot_instance.config)
     if req.strategy:
-        bot_instance.config.strategy.active = req.strategy
+        candidate.strategy.active = req.strategy
     if req.symbol:
-        bot_instance.config.trading.symbol = req.symbol
+        candidate.trading.symbol = req.symbol
     if req.budget_per_trade:
-        bot_instance.config.trading.budget_per_trade = req.budget_per_trade
+        candidate.trading.budget_per_trade = req.budget_per_trade
     if req.auto_select_coin is not None:
-        bot_instance.config.trading.auto_select_coin = req.auto_select_coin
+        candidate.trading.auto_select_coin = req.auto_select_coin
     if req.target_coins_count is not None:
-        bot_instance.config.trading.target_coins_count = req.target_coins_count
-        bot_instance.config.trading.max_open_positions = req.target_coins_count
+        candidate.trading.target_coins_count = req.target_coins_count
+        candidate.trading.max_open_positions = req.target_coins_count
     if req.candidate_observation_seconds is not None:
-        bot_instance.config.trading.candidate_observation_seconds = req.candidate_observation_seconds
+        candidate.trading.candidate_observation_seconds = req.candidate_observation_seconds
     if req.min_observation_gain_pct is not None:
-        bot_instance.config.trading.min_observation_gain_pct = req.min_observation_gain_pct
+        candidate.trading.min_observation_gain_pct = req.min_observation_gain_pct
     if req.candidate_min_burst_count is not None:
-        bot_instance.config.trading.candidate_min_burst_count = req.candidate_min_burst_count
+        candidate.trading.candidate_min_burst_count = req.candidate_min_burst_count
     if req.trailing_activation_pct is not None:
-        bot_instance.config.strategy.trailing_activation_pct = req.trailing_activation_pct
+        candidate.strategy.trailing_activation_pct = req.trailing_activation_pct
     if req.symbol_cooldown_seconds is not None:
-        bot_instance.config.strategy.symbol_cooldown_seconds = req.symbol_cooldown_seconds
+        candidate.strategy.symbol_cooldown_seconds = req.symbol_cooldown_seconds
     if req.only_uptrend is not None:
-        bot_instance.config.trading.only_uptrend = req.only_uptrend
+        candidate.trading.only_uptrend = req.only_uptrend
 
-    bot_instance.apply_config()
-    bot_instance.start(duration_minutes=req.duration_minutes)
+    try:
+        if candidate.decision.engine == "jev":
+            from decision.contracts import validate_config
+            from decision.openrouter import OpenRouterJevProvider
+            validate_config(candidate)
+            if candidate.trading.mode != "simulation": raise ValueError("JEV live execution disabled")
+            if bot_instance._decision_provider is None:
+                probe = OpenRouterJevProvider(candidate.decision)
+                try: probe.check_ready()
+                finally: probe.close()
+        bot_instance.apply_config(candidate)
+        bot_instance.start(duration_minutes=req.duration_minutes)
+    except (ValueError, RuntimeError) as exc:
+        return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
     return {"status": "started", "duration": req.duration_minutes}
 
 @app.post("/api/stop")
 async def stop_bot():
-    res = bot_instance.stop()
+    from starlette.concurrency import run_in_threadpool
+    res = await run_in_threadpool(bot_instance.stop)
     return res
 
 @app.post("/api/force_buy")
-async def force_buy():
-    pos = bot_instance.force_test_buy(reason="Kullanıcı Test Alımı")
+async def force_buy(payload: Optional[Dict[str, Any]] = Body(default=None)):
+    payload = payload or {}
+    symbol = payload.get("symbol")
+    budget = payload.get("budget")
+    if budget is not None and (isinstance(budget, bool) or not isinstance(budget, (int, float))):
+        return JSONResponse(status_code=400, content={"status": "error", "message": "budget sayısal olmalı"})
+    if symbol is not None and (not isinstance(symbol, str) or not __import__('re').fullmatch(r"[A-Z0-9]+_TRY", symbol)):
+        return JSONResponse(status_code=400, content={"status": "error", "message": "Geçerli açık TRY paritesi gerekli"})
+    if bot_instance.config.decision.engine == "jev" and not symbol:
+        return JSONResponse(status_code=400, content={"status": "error", "message": "Manuel JEV dışı alımda symbol açıkça belirtilmeli (ör. SOL_TRY)."})
+    pos = bot_instance.force_test_buy(symbol=symbol, budget=budget, reason="Kullanıcı Test Alımı")
     if pos:
         return {"status": "success", "position": pos}
     return JSONResponse(status_code=400, content={"status": "error", "message": "Pozisyon açılamadı. Fiyat alınamadı veya bütçe yetersiz."})
@@ -356,7 +394,7 @@ async def close_single_position(req: ClosePositionRequest):
 
 @app.post("/api/config")
 async def update_config(req: ConfigUpdateRequest):
-    cfg = bot_instance.config
+    cfg = copy.deepcopy(bot_instance.config)
     if req.take_profit_pct is not None:
         cfg.strategy.take_profit_pct = req.take_profit_pct
     if req.stop_loss_pct is not None:
@@ -395,8 +433,14 @@ async def update_config(req: ConfigUpdateRequest):
     if req.only_uptrend is not None:
         cfg.trading.only_uptrend = req.only_uptrend
 
-    bot_instance.apply_config()
-    save_config(cfg)
+    try:
+        if cfg.decision.engine == "jev":
+            from decision.contracts import validate_config
+            validate_config(cfg)
+        bot_instance.apply_config(cfg)
+        save_config(cfg)
+    except (ValueError, TypeError) as exc:
+        return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
     return {"status": "updated", "config": bot_instance.get_dashboard_state()["config"]}
 
 @app.get("/api/reports")
@@ -407,3 +451,50 @@ async def list_reports():
     files.sort(reverse=True)
     return [{"filename": f, "path": f"/reports/{f}"} for f in files]
 
+
+
+@app.get("/api/decisions/status")
+async def decision_status():
+    controller = getattr(bot_instance, "_decision_controller", None)
+    return controller.status() if controller else {"engine": bot_instance.config.decision.engine, "run_id": None}
+
+@app.get("/api/decisions/recent")
+async def recent_decisions(limit: int = 20):
+    controller = getattr(bot_instance, "_decision_controller", None)
+    if controller is None: return {"decisions": []}
+    # Separate read-only connection: no waiting for an inference lock in the HTTP event loop.
+    import sqlite3
+    from pathlib import Path
+    if controller.cfg.decision.database_path == ":memory:": return {"decisions": [], "message": "Use a file journal for web inspection"}
+    database = Path(controller.cfg.decision.database_path).resolve()
+    connection = sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)
+    connection.row_factory = sqlite3.Row
+    try:
+        rows = [dict(row) for row in connection.execute("SELECT decision_id,stage,symbol,as_of,source,parent_id FROM decisions WHERE run_id=? ORDER BY rowid DESC LIMIT ?", (controller.run_id, max(1, min(limit, 100))))]
+        for row in rows:
+            row.update(model_choice=None, confidence=None, valid=None, applied_action=None, reasons=[], execution=None,
+                       allocation_choice=None, allocation_confidence=None, allocation_fallback=None, retry_count=0)
+            for event in connection.execute("SELECT kind,data_json FROM events WHERE decision_id=? ORDER BY sequence", (row["decision_id"],)):
+                data = json.loads(event["data_json"])
+                if event["kind"] == "model_response":
+                    raw = data.get("raw") if isinstance(data.get("raw"), dict) else {}
+                    answers = raw.get("answers") if isinstance(raw.get("answers"), dict) else {}
+                    answer = next((answers[k] for k in ("portfolio_action", "action", "prebuy_authorization") if isinstance(answers.get(k), dict)), {})
+                    usage = raw.get("usage") if isinstance(raw.get("usage"), dict) else {}
+                    row.update(model_choice=answer.get("choice"), confidence=answer.get("confidence"),
+                               valid=data.get("valid"), validation_error=data.get("validation_error"),
+                               model=raw.get("model"), cost_usd=usage.get("cost"))
+                    allocation = answers.get("allocation") if isinstance(answers.get("allocation"), dict) else {}
+                    row.update(allocation_choice=allocation.get("choice"), allocation_confidence=allocation.get("confidence"))
+                elif event["kind"] == "allocation_fallback":
+                    row["allocation_fallback"] = {"budget_try": data["budget_try"], "selected_allocation": data["selected_allocation"]}
+                elif event["kind"] == "decision_retry":
+                    row["retry_count"] += 1
+                elif event["kind"] == "decision_disposition":
+                    row.update(applied_action=data.get("applied_action"), reasons=data.get("override_reasons", []), disposition=data.get("status"))
+                elif event["kind"] == "inference_failed":
+                    row.update(valid=False, validation_error=data.get("error_code"))
+                elif event["kind"] == "execution_result":
+                    row["execution"] = data.get("status")
+        return {"decisions": rows}
+    finally: connection.close()

@@ -1,3 +1,4 @@
+import time
 import pytest
 from config import load_config
 from bot import BinanceTrBot
@@ -33,6 +34,8 @@ def test_portfolio_stop_loss_triggers_shutdown():
     mock_snap = {
         "symbol": "SOL_TRY",
         "price": 100.0,
+        "bid": 100.0, "ask": 100.05, "timestamp": time.time(),
+        "quote_valid": True, "features_ready": True,
         "rsi": 50.0,
     }
     engine = bot.get_engine_for("SOL_TRY")

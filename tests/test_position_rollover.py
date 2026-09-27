@@ -1,3 +1,4 @@
+import time
 import pytest
 from core.risk_manager import RiskManager
 from config import load_config
@@ -92,11 +93,14 @@ def test_bot_step_position_rollover():
 
     # Fiyatı TP seviyesinin üzerine çıkar (+2.5%)
     bot.scanner.cached_top_pairs = [{"symbol": "SOL_TRY", "change_pct": 5.0, "abs_change": 5.0}]
-    bot.scanner.last_scan_time = 9999999999.0
+    bot.scanner.last_scan_time = time.time()
+    bot.scanner.cached_top_pairs[0]["updated_at"] = time.time()
     bot.scanner.watchlist.min_observation_seconds = 0
     mock_snap = {
         "symbol": "SOL_TRY",
         "price": 102.5,
+        "bid": 102.5, "ask": 102.55, "timestamp": time.time(),
+        "quote_valid": True, "features_ready": True,
         "rsi": 45.0,
         "ema_fast": 103.0,
         "ema_slow": 101.0,
@@ -115,6 +119,8 @@ def test_bot_step_position_rollover():
     # Pozisyon kapatılmamış olmalı (devredilmiş olmalı)
     assert len(bot.simulator.positions) == 1
     updated_pos = list(bot.simulator.positions.values())[0]
-    # Taban fiyat 102.5 TL olarak güncellenmiş olmalı
-    assert updated_pos["entry_price"] == pytest.approx(102.5)
+    # Risk tabanı yenilenir, gerçek işlem maliyeti ve giriş fiyatı korunur.
+    assert updated_pos["entry_price"] == pytest.approx(100.0)
+    assert updated_pos["risk_reference_price"] == pytest.approx(102.5)
+    assert updated_pos["invested_cost"] == pytest.approx(1000.0)
     assert len(bot.simulator.closed_trades) == 0

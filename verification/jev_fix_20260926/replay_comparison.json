@@ -1,0 +1,180 @@
+[
+  {
+    "database": "verification/jev_audit_20260926/fixture_replay.sqlite3",
+    "integrity": "ok",
+    "foreign_key_violations": 0,
+    "runs": [
+      {
+        "run_id": "abbfb5d1-8e24-4ef0-a4fc-beb113d8d6f9",
+        "started_at": 1770000000.0,
+        "ended_at": 1770008940.0,
+        "end_reason": "historical_data_end",
+        "provider": "fixture-not-jev",
+        "environment": "historical_replay",
+        "policy_version": "jev-spot-policy-v2",
+        "fixture": true,
+        "confidence_threshold": 0.65,
+        "code_sha256": "6f35a81f9a927c50fb831464cabfe91d53a3637e960e6ae73e1ea73ead5eeefd"
+      }
+    ],
+    "decisions": 310,
+    "stages": {
+      "portfolio": 150,
+      "candidate": 38,
+      "prebuy": 10,
+      "position": 112
+    },
+    "events": {
+      "run_started": 1,
+      "decision_requested": 310,
+      "inference_attempt": 310,
+      "model_response": 310,
+      "valid_model_response": 310,
+      "decision_disposition": 310,
+      "outcome_updated": 888,
+      "execution_intent": 20,
+      "position_linked": 30,
+      "execution_result": 30,
+      "position_outcome": 132,
+      "outcome_censored": 42,
+      "run_ended": 1
+    },
+    "errors": {},
+    "dispositions": {
+      "CONTINUE:applied": 150,
+      "OBSERVE:applied": 28,
+      "BUY_PROPOSED:delegated_to_prebuy": 10,
+      "BUY:filled": 10,
+      "HOLD:applied": 102,
+      "SELL:filled": 10
+    },
+    "overrides": {},
+    "raw_choices_including_invalid": {
+      "portfolio_action:CONTINUE": 150,
+      "action:OBSERVE": 28,
+      "action:BUY": 10,
+      "prebuy_authorization:EXECUTE": 10,
+      "action:HOLD": 102,
+      "action:SELL": 10
+    },
+    "models": {
+      "fixture/deterministic-test-v1": 310
+    },
+    "http_attempt_statuses": {
+      "fixture": 310
+    },
+    "reported_cost_usd": 0.0,
+    "response_latency_ms": {
+      "n": 310,
+      "mean": 0.45161290322580644,
+      "p95": 0.0,
+      "max": 16.0
+    },
+    "unresolved_intents": 0,
+    "fills": {
+      "fills_BUY": 10,
+      "fills_SELL": 10
+    },
+    "outcomes": {
+      "censored": 42,
+      "observed": 1020
+    },
+    "ledger": [
+      {
+        "status": "closed",
+        "positions": 10,
+        "pnl_try": 29.4235928152292,
+        "fees_try": 20.039463055871103
+      }
+    ]
+  },
+  {
+    "database": "verification/jev_fix_20260926/fixture_replay.sqlite3",
+    "integrity": "ok",
+    "foreign_key_violations": 0,
+    "runs": [
+      {
+        "run_id": "f6b6e832-d677-4173-b0d5-fcbf7fd94eea",
+        "started_at": 1770000000.0,
+        "ended_at": 1770008940.0,
+        "end_reason": "historical_data_end",
+        "provider": "fixture-not-jev",
+        "environment": "historical_replay",
+        "policy_version": "jev-spot-policy-v3",
+        "fixture": true,
+        "confidence_threshold": 0.65,
+        "code_sha256": "b4dfaecba366ad5da9d6211d9a414f527a2b41c6ce9a74949a5e7ef7558e2856"
+      }
+    ],
+    "decisions": 310,
+    "stages": {
+      "portfolio": 150,
+      "candidate": 38,
+      "prebuy": 10,
+      "position": 112
+    },
+    "events": {
+      "run_started": 1,
+      "decision_requested": 310,
+      "inference_attempt": 310,
+      "model_response": 310,
+      "valid_model_response": 310,
+      "decision_disposition": 310,
+      "outcome_updated": 888,
+      "execution_intent": 20,
+      "position_linked": 30,
+      "execution_result": 30,
+      "position_outcome": 132,
+      "outcome_censored": 42,
+      "run_ended": 1
+    },
+    "errors": {},
+    "dispositions": {
+      "CONTINUE:applied": 150,
+      "OBSERVE:applied": 28,
+      "BUY_PROPOSED:delegated_to_prebuy": 10,
+      "BUY:filled": 10,
+      "HOLD:applied": 102,
+      "SELL:filled": 10
+    },
+    "overrides": {},
+    "raw_choices_including_invalid": {
+      "portfolio_action:CONTINUE": 150,
+      "action:OBSERVE": 28,
+      "action:BUY": 10,
+      "prebuy_authorization:EXECUTE": 10,
+      "action:HOLD": 102,
+      "action:SELL": 10
+    },
+    "models": {
+      "fixture/deterministic-test-v1": 310
+    },
+    "http_attempt_statuses": {
+      "fixture": 310
+    },
+    "reported_cost_usd": 0.0,
+    "response_latency_ms": {
+      "n": 310,
+      "mean": 0.7645161290322581,
+      "p95": 0.0,
+      "max": 16.0
+    },
+    "unresolved_intents": 0,
+    "fills": {
+      "fills_BUY": 10,
+      "fills_SELL": 10
+    },
+    "outcomes": {
+      "censored": 42,
+      "observed": 1020
+    },
+    "ledger": [
+      {
+        "status": "closed",
+        "positions": 10,
+        "pnl_try": 29.4235928152292,
+        "fees_try": 20.039463055871103
+      }
+    ]
+  }
+]

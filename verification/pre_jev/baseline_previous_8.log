@@ -1,0 +1,69 @@
+..FFFFF.                                                                 [100%]
+=================================== FAILURES ===================================
+_________________ test_wide_actual_spread_must_block_auto_buy __________________
+test_additional_validation.py:56: in test_wide_actual_spread_must_block_auto_buy
+    assert len(b.simulator.positions)==0, 'Bought despite actual 1.00% spread and configured 0.20% maximum'
+E   AssertionError: Bought despite actual 1.00% spread and configured 0.20% maximum
+E   assert 1 == 0
+E    +  where 1 = len({'8d28bc25': {'current_price': 100.0, 'entry_fee': 2.0, 'entry_price': 100.0, 'entry_reason': 'Komisyon Kurtaran Radar Girişi: RSI=50.0 < 55. Hedef: +%2.00 TP / -%1.00 SL (1m Hız: %+1.00 | 10s Teyitli | Quant Skor: 8.0)', ...}})
+E    +    where {'8d28bc25': {'current_price': 100.0, 'entry_fee': 2.0, 'entry_price': 100.0, 'entry_reason': 'Komisyon Kurtaran Radar Girişi: RSI=50.0 < 55. Hedef: +%2.00 TP / -%1.00 SL (1m Hız: %+1.00 | 10s Teyitli | Quant Skor: 8.0)', ...}} = <core.simulator.SimulatorEngine object at 0x7f35065020d0>.positions
+E    +      where <core.simulator.SimulatorEngine object at 0x7f35065020d0> = <bot.BinanceTrBot object at 0x7f3506502fd0>.simulator
+_________________ test_mask_secrets_must_not_return_plaintext __________________
+test_additional_validation.py:62: in test_mask_secrets_must_not_return_plaintext
+    assert payload['api'].get('secret_key') != cfg.api.secret_key, 'Raw secret remains in masked config'
+E   AssertionError: Raw secret remains in masked config
+E   assert 'FAKE-TEST-SECRET-DO-NOT-USE' != 'FAKE-TEST-SECRET-DO-NOT-USE'
+E    +  where 'FAKE-TEST-SECRET-DO-NOT-USE' = <built-in method get of dict object at 0x7f350648be40>('secret_key')
+E    +    where <built-in method get of dict object at 0x7f350648be40> = {'api_key': '', 'base_url': 'https://www.binance.tr', 'has_secret_key': True, 'secret_key': 'FAKE-TEST-SECRET-DO-NOT-USE', ...}.get
+E    +  and   'FAKE-TEST-SECRET-DO-NOT-USE' = ApiConfig(base_url='https://www.binance.tr', ws_url='wss://stream-cloud.binance.tr/ws', api_key='', secret_key='FAKE-TEST-SECRET-DO-NOT-USE').secret_key
+E    +    where ApiConfig(base_url='https://www.binance.tr', ws_url='wss://stream-cloud.binance.tr/ws', api_key='', secret_key='FAKE-TEST-SECRET-DO-NOT-USE') = BotConfig(trading=TradingConfig(mode='simulation', symbol='AUTO', auto_select_coin=True, target_coins_count=5, max_ope...ort=8000), auth=AuthConfig(enabled=True, username='admin', password='admin123'), loaded_config_path='config.test.yaml').api
+______________ test_runtime_fee_change_must_update_execution_fee _______________
+test_additional_validation.py:68: in test_runtime_fee_change_must_update_execution_fee
+    assert b.simulator.all_orders[-1]['fee']==pytest.approx(5.0), 'Execution still charges old 0.10% instead of new 0.50%'
+E   AssertionError: Execution still charges old 0.10% instead of new 0.50%
+E   assert 1.0 == 5.0 ± 5.0e-06
+E     
+E     comparison failed
+E     Obtained: 1.0
+E     Expected: 5.0 ± 5.0e-06
+_________ test_single_symbol_loss_cooldown_must_block_immediate_rebuy __________
+test_additional_validation.py:78: in test_single_symbol_loss_cooldown_must_block_immediate_rebuy
+    assert not b.simulator.positions, 'Same symbol bought again in the stop-loss step despite 180 second loss cooldown'
+E   AssertionError: Same symbol bought again in the stop-loss step despite 180 second loss cooldown
+E   assert not {'28a3b149': {'current_price': 98.0, 'entry_fee': 2.0, 'entry_price': 98.0, 'entry_reason': 'Komisyon Kurtaran Radar Girişi: RSI=50.0 < 55. Hedef: +%2.00 TP / -%1.00 SL', ...}}
+E    +  where {'28a3b149': {'current_price': 98.0, 'entry_fee': 2.0, 'entry_price': 98.0, 'entry_reason': 'Komisyon Kurtaran Radar Girişi: RSI=50.0 < 55. Hedef: +%2.00 TP / -%1.00 SL', ...}} = <core.simulator.SimulatorEngine object at 0x7f35064ea9e0>.positions
+E    +    where <core.simulator.SimulatorEngine object at 0x7f35064ea9e0> = <bot.BinanceTrBot object at 0x7f3506501310>.simulator
+______________ test_stale_market_data_must_not_open_new_position _______________
+test_additional_validation.py:86: in test_stale_market_data_must_not_open_new_position
+    assert not b.simulator.positions, 'Opened using 5-minute-old cached order-book snapshot after fresh-data failure'
+E   AssertionError: Opened using 5-minute-old cached order-book snapshot after fresh-data failure
+E   assert not {'9215fd27': {'current_price': 100.0, 'entry_fee': 2.0, 'entry_price': 100.0, 'entry_reason': 'Komisyon Kurtaran Radar Girişi: RSI=50.0 < 55. Hedef: +%2.00 TP / -%1.00 SL (1m Hız: %+1.00 | 10s Teyitli | Quant Skor: 8.0)', ...}}
+E    +  where {'9215fd27': {'current_price': 100.0, 'entry_fee': 2.0, 'entry_price': 100.0, 'entry_reason': 'Komisyon Kurtaran Radar Girişi: RSI=50.0 < 55. Hedef: +%2.00 TP / -%1.00 SL (1m Hız: %+1.00 | 10s Teyitli | Quant Skor: 8.0)', ...}} = <core.simulator.SimulatorEngine object at 0x7f35064f5b50>.positions
+E    +    where <core.simulator.SimulatorEngine object at 0x7f35064f5b50> = <bot.BinanceTrBot object at 0x7f3506501090>.simulator
+=========================== short test summary info ============================
+FAILED test_additional_validation.py::test_wide_actual_spread_must_block_auto_buy - AssertionError: Bought despite actual 1.00% spread and configured 0.20% maximum
+assert 1 == 0
+ +  where 1 = len({'8d28bc25': {'current_price': 100.0, 'entry_fee': 2.0, 'entry_price': 100.0, 'entry_reason': 'Komisyon Kurtaran Radar Girişi: RSI=50.0 < 55. Hedef: +%2.00 TP / -%1.00 SL (1m Hız: %+1.00 | 10s Teyitli | Quant Skor: 8.0)', ...}})
+ +    where {'8d28bc25': {'current_price': 100.0, 'entry_fee': 2.0, 'entry_price': 100.0, 'entry_reason': 'Komisyon Kurtaran Radar Girişi: RSI=50.0 < 55. Hedef: +%2.00 TP / -%1.00 SL (1m Hız: %+1.00 | 10s Teyitli | Quant Skor: 8.0)', ...}} = <core.simulator.SimulatorEngine object at 0x7f35065020d0>.positions
+ +      where <core.simulator.SimulatorEngine object at 0x7f35065020d0> = <bot.BinanceTrBot object at 0x7f3506502fd0>.simulator
+FAILED test_additional_validation.py::test_mask_secrets_must_not_return_plaintext - AssertionError: Raw secret remains in masked config
+assert 'FAKE-TEST-SECRET-DO-NOT-USE' != 'FAKE-TEST-SECRET-DO-NOT-USE'
+ +  where 'FAKE-TEST-SECRET-DO-NOT-USE' = <built-in method get of dict object at 0x7f350648be40>('secret_key')
+ +    where <built-in method get of dict object at 0x7f350648be40> = {'api_key': '', 'base_url': 'https://www.binance.tr', 'has_secret_key': True, 'secret_key': 'FAKE-TEST-SECRET-DO-NOT-USE', ...}.get
+ +  and   'FAKE-TEST-SECRET-DO-NOT-USE' = ApiConfig(base_url='https://www.binance.tr', ws_url='wss://stream-cloud.binance.tr/ws', api_key='', secret_key='FAKE-TEST-SECRET-DO-NOT-USE').secret_key
+ +    where ApiConfig(base_url='https://www.binance.tr', ws_url='wss://stream-cloud.binance.tr/ws', api_key='', secret_key='FAKE-TEST-SECRET-DO-NOT-USE') = BotConfig(trading=TradingConfig(mode='simulation', symbol='AUTO', auto_select_coin=True, target_coins_count=5, max_ope...ort=8000), auth=AuthConfig(enabled=True, username='admin', password='admin123'), loaded_config_path='config.test.yaml').api
+FAILED test_additional_validation.py::test_runtime_fee_change_must_update_execution_fee - AssertionError: Execution still charges old 0.10% instead of new 0.50%
+assert 1.0 == 5.0 ± 5.0e-06
+  
+  comparison failed
+  Obtained: 1.0
+  Expected: 5.0 ± 5.0e-06
+FAILED test_additional_validation.py::test_single_symbol_loss_cooldown_must_block_immediate_rebuy - AssertionError: Same symbol bought again in the stop-loss step despite 180 second loss cooldown
+assert not {'28a3b149': {'current_price': 98.0, 'entry_fee': 2.0, 'entry_price': 98.0, 'entry_reason': 'Komisyon Kurtaran Radar Girişi: RSI=50.0 < 55. Hedef: +%2.00 TP / -%1.00 SL', ...}}
+ +  where {'28a3b149': {'current_price': 98.0, 'entry_fee': 2.0, 'entry_price': 98.0, 'entry_reason': 'Komisyon Kurtaran Radar Girişi: RSI=50.0 < 55. Hedef: +%2.00 TP / -%1.00 SL', ...}} = <core.simulator.SimulatorEngine object at 0x7f35064ea9e0>.positions
+ +    where <core.simulator.SimulatorEngine object at 0x7f35064ea9e0> = <bot.BinanceTrBot object at 0x7f3506501310>.simulator
+FAILED test_additional_validation.py::test_stale_market_data_must_not_open_new_position - AssertionError: Opened using 5-minute-old cached order-book snapshot after fresh-data failure
+assert not {'9215fd27': {'current_price': 100.0, 'entry_fee': 2.0, 'entry_price': 100.0, 'entry_reason': 'Komisyon Kurtaran Radar Girişi: RSI=50.0 < 55. Hedef: +%2.00 TP / -%1.00 SL (1m Hız: %+1.00 | 10s Teyitli | Quant Skor: 8.0)', ...}}
+ +  where {'9215fd27': {'current_price': 100.0, 'entry_fee': 2.0, 'entry_price': 100.0, 'entry_reason': 'Komisyon Kurtaran Radar Girişi: RSI=50.0 < 55. Hedef: +%2.00 TP / -%1.00 SL (1m Hız: %+1.00 | 10s Teyitli | Quant Skor: 8.0)', ...}} = <core.simulator.SimulatorEngine object at 0x7f35064f5b50>.positions
+ +    where <core.simulator.SimulatorEngine object at 0x7f35064f5b50> = <bot.BinanceTrBot object at 0x7f3506501090>.simulator
+5 failed, 3 passed in 0.14s
