@@ -13,7 +13,7 @@ from decision.fixtures import FixtureDecisionProvider
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="config.jev.example.yaml")
-    parser.add_argument("--data", required=True, help="Chronological frame JSONL; see JEV_INTEGRATION.md")
+    parser.add_argument("--data", required=True, help="Chronological frame JSONL; see docs/JEV_INTEGRATION.md")
     parser.add_argument("--provider", choices=["openrouter", "laya", "fixture"], default=None,
                         help="Default: laya for engine=laya configs, otherwise openrouter")
     parser.add_argument("--database", help="Override the SQLite output path")

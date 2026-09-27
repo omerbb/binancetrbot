@@ -1,239 +1,205 @@
-> **Fork (Laya sürümü):** JEV sürümünün devamı; yerel, ince ayarlı Laya modeli, eğitim verileri, modeller ve gözlemler dahil. Bkz. [FORK_NOTES.md](FORK_NOTES.md) (JEV katmanı: [FORK_NOTES_JEV.md](FORK_NOTES_JEV.md)). Büyük dosyalar Git LFS'te: klonlamadan önce `git lfs install`. Upstream: [cihancosgun/binancetrbot](https://github.com/cihancosgun/binancetrbot).
+# Binance TR Botu: JEV ve Laya karar motorlarıyla deneysel fork
 
-> **Laya sürümü (yerel model):** Bu kopya JEV/OpenRouter yerine, JEV'in geçmiş kararları ve gerçekleşen piyasa sonuçlarıyla ince ayar yapılmış **yerel Laya** modelini kullanır. API anahtarı, ağ bağlantısı veya çağrı başı ücret yoktur. `config.laya.example.yaml` ve [LAYA_INTEGRATION.md](LAYA_INTEGRATION.md) ile başlayın. JEV motoru (`engine: jev`) karşılaştırma ve ek öğretmen verisi toplamak için korunmuştur. Gerçek Binance emirleri model motorlarında kapalıdır (yalnızca sanal işlem).
+Bu repo, [cihancosgun/binancetrbot](https://github.com/cihancosgun/binancetrbot) botunun bir forkudur. Orijinal botun kural tabanlı al-sat döngüsü korunur. Yanına **model tabanlı karar motorları** eklenir, kararları ve sonuçları kaydeden bir **veri altyapısı** kurulur ve bu veriyle **eğitilebilir** bir yerel model hattı oluşturulur.
 
-> **JEV + OpenRouter entegrasyonu:** `config.jev.example.yaml` profili ve [JEV_INTEGRATION.md](JEV_INTEGRATION.md) ile başlayın. JEV bütün stratejik karar aşamalarında kullanılabilir; gerçek Binance emirleri bu modda kapalıdır. SQLite karar/sonuç kaydı, tarihsel replay ve eğitim JSONL dışa aktarımı dahil edilmiştir. Eski profiller `legacy` olarak kalır.
+Model motorları **yalnızca sanal işlem** yapar; gerçek Binance emri kapalıdır. Yatırım tavsiyesi değildir.
 
-# 🚀 Binance TR Otomatik Al-Sat Botu (Paper Trading & Canlı Mod)
-
-Bu bot; Binance TR üzerinde belirlediğiniz bütçe ve parametrelerle anlık canlı tahtayı ve piyasa radarını izleyerek otomatik al-sat işlemleri gerçekleştiren, kurumsal düzeyde risk yönetimi ve web kontrol paneline sahip algoritmik bir ticaret platformudur. 
-
-Gerçek sermayenizi riske atmadan önce **15-20 dakikalık (veya dilediğiniz sürede) sanal bütçeli (paper trading / test modu)** koşular yaparak algoritmaların performansını ölçebilir, oluşturulan detaylı performans karnelerini inceleyip parametreleri optimize ettikten sonra tek bir komutla güvenle **gerçek Binance TR hesabına (live mod)** geçebilirsiniz.
-
----
-
-## 🌟 Öne Çıkan Özellikler ve Son Geliştirmeler
-
-### 1. 🛡️ Portföy Stop-Loss Acil Kapatma Sigortası (Emergency Circuit Breaker)
-- Toplam portföy / hesap sermayesi zararı belirlenen eşiğe (varsayılan: **-%2.0**) ulaştığında sistem devreye girer.
-- Gerçekleşmiş işlem zararları ile açık pozisyonların toplam anlık kaybını hesaplar.
-- Eşik aşıldığında **tüm açık pozisyonları derhal piyasa fiyatından nakde çevirir ve botu otomatik olarak durdurur (`self.stop()`)**. Böylece ani piyasa çöküşlerinde sermayeniz kesin olarak korunur.
-
-### 2. 🔄 Komisyonsuz Pozisyon Devri (Frictionless Position Rollover & Ratchet)
-- **Problem:** Bir coin Kâr Al seviyesine ulaştığında satılıp birkaç saniye sonra radar aynı coini tekrar lider görüp satın aldığında çift yönlü komisyon (churn) israfı oluşur.
-- **Çözüm:** Pozisyon Kâr Al (+%2.00) veya kârlı Trailing Stop seviyesine geldiğinde; eğer coin piyasa radarında liderliğini koruyorsa veya strateji `BUY` sinyali üretmeye devam ediyorsa **pozisyon kapatılmaz**. Pozisyonun taban giriş maliyeti güncel fiyata kilitlenir (ratchet) ve komisyon ödenmeden trend takibi sürdürülür.
-- **Güvenlik Kuralı:** Zarar Kes (Stop-Loss) seviyesinde asla devir yapılmaz; düşen bıçak tutulmadan pozisyon derhal tasfiye edilir.
-
-### 3. 🎯 Matematiksel Olarak Optimize Edilmiş Risk/Ödül Oranı ($R:R = 2:1$)
-- **Kâr Al (TP):** `+%2.00` (Binance TR %0.20 çift yönlü komisyonunu rahatlıkla karşılar ve net pozitif kâr bırakır).
-- **Zarar Kes (SL):** `-%1.00` (Piyasa mikro gürültüsünde erken stop olmayı engeller).
-- **İz Süren Stop (Trailing Stop):** Aktivasyon `+%0.80`, Takip Mesafesi `%0.50` (Pozisyon kâra geçtikten sonra zirveden %0.50 çekilmede kârı kilitler).
-- **Sembol Cooldown:** `90 saniye` (Aynı coine peş peşe işlem açarak komisyona boğulmayı önler).
-
-### 4. 💎 Likidite & Kaliteli Coin Filtresi (`min_24h_volume_try: 5.000.000 TL`)
-- Sığ tahtalı, tek kademede -%3 kaymaya (slippage) yol açan manipülatif meme/çöp coinler radar tarafından otomatik elenir.
-- Yalnızca 24 saatlik işlem hacmi en az 5 Milyon TL olan derin ve likit coinlerde al-sat yapılır.
-
-### 5. ⛔ Zarar Kes Ceza Beklemesi (`loss_cooldown_seconds: 300s` / 5 Dakika)
-- Bir coin Stop-Loss ile kapatıldığında o coine **5 dakika boyunca tekrar alım yapılması yasaklanır**.
-- Böylece düşüş trendine giren coinlerin (`VANA`, `AEVO` vb.) peş peşe 2-3 kez alınıp zarar yazması (düşen bıçak tutma) kesin olarak engellenir.
-
-### 6. 🎯 Disiplinli Sinyal Şartı (`require_strict_buy_signal: true`)
-- Bot başlar başlamaz sepeti ilk saniyede rastgele coinlerle doldurmaz (`auto_fill_portfolio: false`).
-- Her aday coin için teknik indikatörlerin (RSI dip dönüşü, Bollinger alt bandı, EMA trend desteği) **onaylı `BUY` sinyali** üretmesini sabırla bekler.
-
-### 7. 🔀 Ayrıştırılmış Test ve Canlı Mod Yapılandırması
-- **Test Modu (`config.test.yaml`):** 10.000 TL sanal bütçe ile risk almadan stratejileri dener, API anahtarı gerektirmez.
-- **Canlı Mod (`config.live.yaml`):** Binance TR API üzerinden gerçek spot emirleri iletir.
-- Başlatırken `--mode test` veya `--mode live` parametresi ile anında geçiş yapılabilir.
-
-### 8. 🔒 Git Güvenlik Koruması
-- API anahtarlarınızı içeren `config.yaml`, `config.live.yaml` ve `config.test.yaml` dosyaları `.gitignore` ile korunur, Git'e asla yüklenmez.
-- Git deposu için örnek şablonlar sunulur (`config.test.example.yaml`, `config.live.example.yaml`, `config.example.yaml`).
+```
+upstream 2639db9 ──► 10921ea  JEV katmanı (karar motoru + journal + veri)
+                 ──► 4b66d0a  Laya katmanı (yerel eğitilebilir model + eğitim hattı + modeller)
+                 ──► (bu README ve doküman düzeni)
+```
 
 ---
 
-## 🖥️ Web Kontrol Paneli (UI Kılavuzu)
+## 1. Amaç ve yol haritası
 
-Bot, modern **Glassmorphism & Dark Mode** estetiğine sahip, mobil ve masaüstü uyumlu, yüksek performanslı bir Web Kontrol Paneli ile birlikte gelir. Panel, arayüz donmalarını önlemek için tamamen bellek içi (in-memory telemetry) mimarisiyle çalışır.
+### JEV: "Bir karar modeli bu problemde nasıl davranır?"
 
-### 📊 Panel Bileşenleri ve Yetenekleri:
-1. **Üst Durum & Zaman Sayacı:**
-   - Botun çalışma durumu (Çalışıyor / Durduruldu), aktif mod (`TEST / SIMULATION` veya `CANLI / LIVE`), seçili strateji ve kalan test süresi geri sayımı.
-2. **Portföy & Kâr/Zarar Telemetrisi:**
-   - **Toplam Varlık (Equity):** Nakit + açık pozisyonların anlık toplam piyasa değeri.
-   - **Kullanılabilir Nakit (TRY):** Yeni işlemler için hazır bütçe.
-   - **Yatırımdaki Tutar:** Açık coinlerde bağlı olan sermaye.
-   - **Net Kâr/Zarar (TL ve %):** Oturum boyunca elde edilen toplam net kazanç veya kayıp.
-   - **İşlem İstatistikleri:** Toplam işlem sayısı, kârlı/zararlı işlemler ve kazanma oranı (Win Rate %).
-3. **Piyasa Radarı (Canlı Liderler):**
-   - Binance TR'deki tüm TRY pariteleri taranarak en yüksek hacimli ve en çok yükselen ilk 6 coin anlık fiyat ve 24 saatlik değişim yüzdeleriyle gösterilir.
-4. **Açık Pozisyonlar Tablosu:**
-   - Sepetteki coinlerin sembolü, giriş fiyatı, anlık canlı fiyatı, yatırılan maliyet, anlık kâr/zarar yüzdesi, en yüksek görülen zirve fiyatı ve her coin için **Tek Tıkla Pozisyon Kapatma** butonu.
-5. **İnteraktif Kontrol Butonları:**
-   - `🚀 Botu Başlat` / `🛑 Botu Durdur`: Oturumu dilediğiniz an başlatıp durdurma.
-   - `⚡ Anında Test Alımı`: Piyasa radarının 1 numaralı lider coininden anında pozisyon açarak stratejiyi canlı izleme.
-   - `🛑 Tümünü Sat`: Açık olan tüm pozisyonları tek tuşla anında piyasa fiyatından nakde çevirme.
-6. **Canlı Sistem Terminali (Logs):**
-   - Botun aldığı anlık teknik sinyaller, gözlem durumları, TP/SL tetiklenmeleri ve pozisyon devir bildirimlerinin canlı akışı.
-7. **Nihai Karne ve Raporlama:**
-   - Test tamamlandığında üretilen detaylı HTML karnesine tek tıkla erişim linki.
+JEV'i (TypeSafe JEV 1.13, OpenRouter System One API) entegre etmekteki amaç, hazır bir tipli karar modelinin al-sat kararlarında **nasıl davrandığını** görmekti. Soruların cevapları şunlardı:
+- ne zaman alır,
+- neye bakar,
+- ne kadar emin olur,
+- güvenlik sınırlarıyla nasıl etkileşir.
 
----
+Bunun için kontrolcü, her kararı ve sonrasında piyasanın ne yaptığını eksiksiz kaydedecek şekilde tasarlandı. Bu kayıt disiplini, JEV'in en kalıcı katkısı oldu: **eğitim verisi**.
 
-## 🧠 Algoritmik Ticaret Stratejileri
+### Laya: eğitilebilir, adaptif bir sistemin altyapısı
 
-Bot, farklı piyasa koşullarına göre optimize edilmiş modüler strateji motorlarına sahiptir:
+Laya'nın amacı JEV'i kopyalamak değil, **kendi verisiyle yeniden eğitilebilen** bir karar sisteminin altyapısını kurmaktı. Laya, bu makinede çalışan, ince ayar yapılabilen bir karar modeli. Bu altyapının parçaları:
+- sağlayıcıdan bağımsız karar sözleşmesi,
+- eğitimde ve canlıda aynı girdi dönüşümü,
+- veri seti oluşturma, eğitim, kalibrasyon ve değerlendirme araçları,
+- botun kendi oturumlarından sürekli veri toplayıp yeniden eğitim döngüsü.
 
-### 1. 🎯 Komisyon Oranını Kurtaran Strateji (`fee_recovery` - Varsayılan)
-- **Amaç:** Binance TR işlem komisyonlarını (örn: %0.10 alış + %0.10 satış = %0.20) hesaba katarak en yüksek verimle sermayeyi büyütmek.
-- **Alım Mantığı:**
-  - *Aşırı Satım Tepkisi:* RSI $\le 42$ ve Fiyat Bollinger Alt Bandına yakınken dip sıçramalarını yakalar.
-  - *Trend Devamı:* EMA9 > EMA21 ve RSI dengeli bölgedeyken (42-65) yükseliş momentumuna katılır.
-  - *Mikro Geri Çekilme:* 24 saatlik getirisi pozitif olan coinlerde RSI < 50 düzeltmelerinde giriş yapar.
-- **Çıkış & Devir Mantığı:** +%2.00 Kâr Al (trend sürüyorsa komisyonsuz devir), -%1.00 Zarar Kes, +%0.80 aktivasyonlu %0.50 Trailing Stop ve -%2.0 Portföy Sigortası.
+JEV'in ürettiği kayıtlar burada öğretmen verisi olarak işe yaradı. Laya'nın ilk sürümü, JEV'in cevap dağılımlarından ve o kararlardan sonra gözlenen piyasa sonuçlarından öğrendi.
 
-### 2. 🌊 Adaptive Market Regime (`adaptive_regime`)
-- **Amaç:** Piyasanın o anki rejimini (Trend / Yatay / Yüksek Volatilite) otomatik tespit ederek strateji davranışını dinamik olarak değiştirir.
-- **Mantık:** ADX (Ortalama Yönsel Endeks) ve Bollinger Genişliği kullanarak piyasa güçlü trenddeyse EMA momentum takibi yapar; piyasa yatay banttaysa Bollinger sınırlarından ters yönlü scalp işlemleri açar.
+### Sıradaki adım: karar mekanizması için MLP
 
-### 3. 📈 RSI + Bollinger Scalper (`rsi_bollinger`)
-- **Amaç:** İstatistiki standart sapma sınırlarından aşırı satım/aşırı alım geri dönüşlerini yakalamak.
-- **Mantık:** Fiyat Bollinger Alt Bandının altına sarktığında ve RSI < 35 seviyesindeyken alım yapar, orta/üst bantta kâr realizasyonu hedefler.
+Mevcut bulgulara göre bu problem için en uygun karar modeli bir **MLP** (çok katmanlı algılayıcı). Plan ve gerekçesi:
 
-### 4. ⚡ Momentum EMA (`momentum_ema`)
-- **Amaç:** Güçlü yükseliş trendlerindeki ivmeyi yakalamak.
-- **Mantık:** Hızlı üssel hareketli ortalama (EMA 9) yavaş ortalamayı (EMA 21) yukarı kestiğinde (Golden Cross) ve hacim desteği olduğunda alım yapar.
+**Neden MLP:**
+- **Girdi sayısal ve tablo biçiminde.** Kararı belirleyen bilgiler sayılar: mum getirileri, volatilite, spread, RSI/EMA/ADX, hacim, BTC bağlamı, günün saati. Laya bir metin encoder'ı ve bu sayıları token olarak okuyor. Somut kanıt: yalnızca volatiliteye göre ayrılmış basit bir tahmin, v1 Laya'nın 5 dk tahmininden daha iyiydi (test log-loss 1,73'e karşı 1,80). Sayısal girdiyi doğrudan işleyen bir model bu sinyali daha kolay yakalar.
+- **Hız ve kapsam.** MLP CPU'da mikrosaniyeler içinde çalışır, GPU gerektirmez. Tüm TRY evreni (300+ sembol) her birkaç saniyede değerlendirilebilir; Laya'nın 8 GB GPU'da 12'li batch kısıtı ortadan kalkar.
+- **Eğitim maliyeti.** Laya'nın bir eğitim turu bu makinede 40–60 dk sürdü. Bir MLP, 10–100 bin satırda dakikalar içinde eğitilir. Bu, sık yeniden eğitimi ve kayan pencereyle (walk-forward) doğrulamayı pratik hale getirir; adaptif sistem hedefine daha uygundur.
+- **Kalibrasyon.** Olasılık çıktısı sıcaklık ölçekleme (temperature) ile kalibre edilebilir. Mevcut beklenen-değer kuralı kalibre olasılık bekliyor.
 
-### 5. 🕸️ Grid Micro Scalper (`grid_scalper`)
-- **Amaç:** Belirli bir fiyat aralığında dalgalanan coinlerde önceden belirlenmiş kademelerde sık al-sat yapmak.
-- **Mantık:** Fiyat alt kademelere indikçe parça alım, üst kademelere çıktıkça parça satış yapar.
+**Eğitim hedefi: kararlar değil, sonuçlar.** MLP, JEV'in veya Laya'nın **kararlarını** taklit etmeyecek:
+- JEV 1.499 adayda 10 kez BUY dedi, Laya hiç almadı; bu kararlar taklit edilirse model "alma"yı öğrenir.
+- Laya zaten JEV'in kopyası; onu taklit etmek kopyanın kopyasını almak olur.
+
+Hedef, her kararın ardından ölçülmüş **gerçek piyasa sonuçları**: 1/5/15 dk orta fiyat getirisi ve komisyon-spread sonrası net getiri. Journal bu sonuçları, model ne karar verirse versin, her aday için kaydediyor. Adaylar model tarafından seçilmediği (sırayla tarandığı) için veri, öğretmenlerin tercihinden bağımsız bir piyasa örneklemi. Bu çerçevede JEV ve Laya'nın rolü **veri toplayıcı**; MLP'nin öğretmenleri değil. JEV'in rejim veya kurulum kalitesi gibi cevapları istenirse yalnızca yardımcı hedef olarak kullanılabilir; karar vermez.
+
+**Planlanan kurgu:**
+
+| Parça | Plan |
+|---|---|
+| Girdi | Journal'daki her state'ten sayısal özellik vektörü: son N mumun getirileri, volatilite, aralık konumu, düşüş, hacim oranları; spread, RSI, EMA eğimi, ADX/DI, ATR, Bollinger %b; tick momentumu; 24 saatlik değişim ve hacim; BTC hız ve dump bayrağı; günün saati; veri kalitesi bayrakları. Standardize edilir; eksik değerler bayrakla işaretlenir. |
+| Çıkış | Çok başlı: 5 dk ve 15 dk orta fiyat getirisi dağılımı (mevcut 7 seviyeli kovalar) ve P(net > 0). |
+| Karar | Mevcut beklenen-değer kuralı aynen: beklenen getiri − spread − komisyon ≥ eşik. Eşik kalibrasyon payında seçilir. |
+| Entegrasyon | `DecisionProvider` sözleşmesine uyan bir MLP sağlayıcısı, `forward_return_5m` cevabını ve `expected_mid_return_pct` değerini döndürür. Kontrolcü, guardrail'ler, journal ve panel değişmez. |
+| Doğrulama | Zamana göre ayrım ve etiket ufku kadar boşluk (`--test-hours` mantığı), kayan pencere değerlendirmesi. Ölçüt komisyon sonrası net getiri; isabet oranı değil. |
+| Veri | Mevcut veri: 14,5 bin gece + 1,1 bin JEV sonucu. Farklı gün, saat ve piyasa koşullarından daha fazla oturum gerekiyor. Laya motoru gece oturumunda saatte ~1.950 etiketli karar üretti. |
+
+**Gerçekçi beklenti.** MLP, yön sinyalinin olmadığı yerde sinyal yaratmaz. Aşağıdaki sonuçlar, mevcut veride basit hiçbir kesitin maliyeti aşmadığını gösteriyor. MLP'nin katkısı sayısal sinyali Laya'dan daha iyi kullanmak, çok daha fazla sembolü taramak ve hızlı yeniden eğitimle değişen koşullara uyum sağlamak olacak. Kârlılık, veri ve maliyet koşullarına bağlı kalacak.
 
 ---
 
-## 📡 Piyasa Radarı ve Dinamik Sepet Yönetimi (`symbol: "AUTO"`)
+## 2. JEV mimariye ne getirdi (commit `10921ea`)
 
-`symbol: "AUTO"` modu aktifken bot piyasada sabit bir coine bağlı kalmaz:
-1. **Radar Taraması (`MarketScanner`):** Binance TR'deki tüm TRY çiftlerini hacim (min 5M TL), 24 saatlik getiri ve volatiliteye göre sıralar.
-2. **Düşen Bıçak Filtresi (`filter_falling_coins`):** Son 24 saatte veya anlık takipte sürekli aşağı inen coinleri tespit edip eler.
-3. **Çifte Patlama Radarı (`candidate_observation_seconds: 45`, `min_observation_gain_pct: 1.5`, `candidate_min_burst_count: 2`):** Bir coin radara girdiğinde hemen alınmaz; 45 saniyelik hareketli pencerede **en az +%1.50 yükseliş ivmesi** ve **en az 2 defa patlama/yükseliş dalgası** kanıtlaması şart koşulur. Bu sayede tek seferlik sahte fitiller (fakeout/wick) elenir, gerçek ve sürdürülebilir alım baskısı teyit edilir.
-4. **Dinamik Aday Rotasyonu & 1-Patlama Ekstra Tur Hakkı:** İlk 45 saniyelik turda en az 1 defa patlama yakalanmışsa coin listeden **çıkarılmaz; 1 tur daha (+45s, toplam 90s) takibe devam edilir**. Eğer 45 saniye boyunca hiç patlama olmamışsa (veya 90s sonunda 2. teyit gelmemişse) coin 5 saniyelik dinlenmeye (`candidate_timeout_cooldown_seconds: 5`) alınarak sıradaki adaylara geçilir.
-5. **Dinamik Portföy Sepeti (`target_coins_count: 5`):** Bütçeyi 5 eşit parçaya bölerek portföy riskini dağıtır.
-6. **Kesintisiz Pozisyon Devri (Rollover):** Trendi devam eden ve aynı coin seçildiğinde sat-al yapıp komisyon yakmak yerine kârı kilitler ve maliyeti güncelleyerek pozisyonu taşır.
-7. **5 Dakika Zarar Cezası (`loss_cooldown_seconds: 300`):** Zararla kapatılan coine 5 dakika boyunca tekrar giriş engellenir.
+Upstream'de karar, strateji sınıflarının sinyali ile risk yöneticisinin kurallarından oluşuyordu. JEV katmanı, bunun yanına sağlayıcıdan bağımsız bir **model karar katmanı** ekledi. Legacy profiller hiç değişmeden çalışır.
 
----
+| Bileşen | Ne getirdi |
+|---|---|
+| `decision/questions.py` | Tipli ve sınırlı karar sözlüğü. Portföy: `CONTINUE/PAUSE_ENTRIES/FLATTEN`. Aday: `BUY/WAIT/OBSERVE/SKIP` + tutar. Pozisyon: `HOLD/SELL/SELL_PARTIAL/ROLLOVER`. Son alım onayı: `EXECUTE/WAIT/CANCEL`. Tanısal sorular: regime, reason_code, setup_quality. Model serbest metin veya sayı üretmez; sayısal işlemleri kod yapar. |
+| `decision/contracts.py` | `DecisionProvider` sözleşmesi, şema/politika sürümleri, yanıt doğrulama (olasılık toplamı, seçim-argmax tutarlılığı), gizli alan temizleme. Laya bu sözleşme sayesinde tek satır kontrolcü değişikliğiyle takılabildi. |
+| `decision/controller.py` | Model kararlarını deterministik guardrail'lerle birleştirir: bayat veri, spread, pozisyon limiti, cooldown, kesin zarar-kes, portföy zarar sınırı, oturum sonu. Alım iki aşamalı: öneri, ardından taze veriyle onay. Model hatasında gizli legacy yedeği yok; WAIT/HOLD'a düşer. |
+| `decision/journal.py` | SQLite (WAL, `synchronous=FULL`) defteri. Her istek model çağrısından **önce** yazılır; her cevap, uygulanan aksiyon ve engel nedeni kaydedilir. Her karar için **60/300/900 sn piyasa sonucu** ölçülür, pozisyon muhasebesi tutulur. Bu, sonraki tüm eğitimlerin veri kaynağı. |
+| `decision/openrouter.py`, `inference.py` | Sınırlı tekrarlı HTTP istemcisi ve deadline'lı tek çıkarım işçisi. Model beklenirken risk kontrolü çalışmaya devam eder. |
+| `decision/replay.py`, `export.py` | Aynı kontrolcüyle tarihsel replay; eğitim için JSONL dışa aktarımı. |
+| `web/` | Model karar akışı paneli, oturum sırasında ayar kilidi (409). |
+| Testler | 38 → 277. `tools/run_offline_tests.py` testleri ağ ve gerçek emir engelli çalıştırır. |
 
-## 📦 Kurulum ve İlk Ayarlar
+## 3. Laya mimariye ne getirdi (commit `4b66d0a`)
 
-Proje Python 3.10+ ve sanal ortam (`venv`) ile tam uyumludur.
+| Bileşen | Ne getirdi |
+|---|---|
+| `decision/laya_provider.py` | Yerel çıkarım: API anahtarı, ağ ve ücret yok. JEV yanıt sözleşmesine birebir uyum; güven JEV formülüyle `(n·p_max−1)/(n−1)` hesaplanır, eşikler aynı anlamı taşır. Batch çıkarım, süreç boyunca sıcak kalan model, CUDA hatasında güvenli yeniden yükleme, checkpoint ve format doğrulama. |
+| `decision/laya_state.py` | ~12 KB JSON state'i (~8.400 token) ~1,5 KB metne (~620 token) çeviren **deterministik** fonksiyon. Mum ve tick dizileri türetilmiş özelliklere indirgenir. Eğitimde ve canlıda aynı fonksiyon çalışır; format sürümlüdür (`laya-compact-v1`). |
+| `forward_return_5m` sorusu | JEV'e değil **gözlenen sonuçlara** göre eğitilen 7 seviyeli 5 dk fiyat tahmini. Laya'nın JEV'de olmayan asıl yeteneği, eğitilebilir olması. |
+| `decision/expected_value.py` + kontrolcü | **Beklenen-değer kuralı:** beklenen getiri − spread − 2×komisyon − 2×kayma ≥ eşik ise al; açık pozisyonda beklenen tutma getirisi ≤ −eşik ise sat. Aritmetiği kod yapar. Eşik, eğitimde görülmemiş kalibrasyon payında seçilir; kenar bulunamazsa bot almaz. |
+| Batch zamanlama | Sırası gelen tüm semboller tek model çağrısında değerlendirilir. Piyasa verisi paralel ön-çekilir. Dakika başına borsa isteği bütçesi var. Alım adayları beklenen kenara göre sıralanır; en güçlüsü önce alınır. Pozisyonlar ayrı ve kısa aralıkla yeniden değerlendirilir. |
+| `decision/laya_dataset.py` + `tools/laya_*` | Veri seti oluşturucu: öğretmen + outcome satırları. Pozisyon verisi olmadığı için pozisyon ve prebuy state'leri gerçek mum geçmişinden, canlıdaki kodla türetilir. Oturum veya zaman bazlı ayrım (sızıntıya karşı 15 dk boşluk). Ayrıca RLCD ince ayarı, sıcaklık kalibrasyonu, uçtan uca değerlendirme ve ağsız hızlı kontrol araçları. |
+| Sürekli öğrenme | `--outcome-provider laya-local`: botun kendi oturumlarının sonuçları, öğretmen olarak değil yalnızca outcome etiketi olarak veri setine girer. |
+| Testler | 277 → 301. Model yüklenmeden çalışır. |
+
+## 4. Bunların dışında değişenler
+
+- **Upstream çekirdek dosyaları (JEV commit'i, 17 dosya):**
+  - `core/market_data.py`: yalnızca kapanmış mumlar, Wilder göstergeleri, veri kalite nedenleri, zaman damgaları.
+  - `core/market_scanner.py`: özellik-modu (stratejik eleme yok), mikro-momentum metrikleri.
+  - `core/simulator.py`, `core/risk_manager.py`: net tasfiye K/Z, `risk_reference_price` devri.
+  - `core/binance_client.py`, `core/live_trader.py`: sağlamlaştırma.
+  - `bot.py`: motor seçimi ve tazelik kontrolleri.
+  - `config.py`: karar ayarları.
+  - `web/*`: panel.
+  - 4 test.
+- **Laya commit'inde:**
+  - `config.py`, `contracts.py`: `engine: laya`, yeni ayarların doğrulaması.
+  - `journal.py`: motor bazlı politika sürümü.
+  - `inference.py`: batch çıkarım.
+  - `replay.py`, `tools/replay_jev.py`: Laya replay'i.
+  - `bot.py`, `web/*`: motor etiketleri; panel her karar için beklenen getiriyi, maliyeti, net kenarı ve eşiği gösterir.
+  - `tools/run_offline_tests.py`: büyük veri klasörleri test kopyasından hariç.
+- **Değişmeyenler:** strateji sınıfları ve legacy kural tabanlı mod (`engine: legacy`).
+- **Güvenlik:** Anahtar içeren `config.jev.demo.yaml` ve `local/` klasörü repoya alınmadı. Anahtarı temizlenmiş `config.jev.demo.example.yaml` eklendi. Repo anahtar ve parola hash'i için tarandı: 0 eşleşme.
+- **Doküman düzeni:** Ayrıntılı dokümanlar `docs/` altında. Orijinal bot anlatımı `docs/LEGACY_BOT.md`.
+
+## 5. Sonuçlar ve yorumları
+
+Tüm sayılar bu repodaki verilerden, `tools/laya_evaluate.py` ve `research/outcome_path_analysis.py` ile üretildi. Markout'lar varsayımsaldır: ask'ten alış, bid'den satış, iki taraf %0,1 komisyon.
+
+**1. JEV neden hiç almadı?** 1.499 aday kararının 995'i "güven eşiğin altında" yedeğine düştü. JEV BUY'u yalnızca 10 kez seçti; 3 alım önerisi de son onayda düştü.
+> **Yorum:** Alım olmamasının doğrudan nedeni JEV'in düşük güveni (aksiyonda ortalama 0,27). Ama bu tesadüf değildi. Aynı kararlarda 5 dk sonra satış komisyon sonrası yalnızca %10,9 durumda kârlıydı, ortalama −%0,39. JEV'in çekingenliği ortalamada doğruydu.
+
+**2. Laya ince ayarı.** Taban Laya'nın JEV ile uyumu ~0. İnce ayarlı v1'in görülmemiş oturumdaki uyumu: action 0,60, regime 0,79, reason_code 0,98, setup_quality 0,86.
+> **Yorum:** Laya sıfırdan kullanılamaz, ama ince ayarla JEV'in karar tarzını büyük ölçüde yakalıyor ve bunu ~200 ms'de, ücretsiz yapıyor. Taklit başarılı, fakat taklit edilen şey kârlılık değil.
+
+**3. Tahmine odaklanan ikinci aşama (v2) reddedildi.** Kalibrasyon CE'si 1,91 → 2,07.
+> **Yorum:** ~770 benzersiz sonuçla model aşırı öğrendi. Sorun veri azlığıydı, eğitim hilesiyle çözülemezdi.
+
+**4. Gece oturumu:** 8 saat, 15.646 karar, 14.527 gözlenmiş 5 dk sonucu. Bir zorla sonlandırma testi de yapıldı; veritabanı bozulmadı.
+> **Yorum:** Veri toplama altyapısı hedeflendiği gibi çalışıyor. Laya saatte ~1.950 etiketli karar üretti; JEV demo profili ~60 üretiyordu (~30 kat).
+
+**5. Gece modeli (`laya-bsjev-night`).** Tahmin test log-loss 1,813; marjinal taban 1,825; v1 1,858. Beklenen ile gerçekleşen getiri arasındaki sıra korelasyonu ≈ 0. Eşik +0,09; 0 alım. Action taklidi 0,73'ten 0,63'e düştü.
+> **Yorum:** Örneklem dışında tabanı geçen ilk tahmin, yani veri artınca model öğreniyor. Ama öğrendiği hareketin **büyüklüğü** (oynaklık), **yönü** değil. Beklenen-değer kuralı yön bilmeden maliyeti aşamayacağı için almıyor; bu doğru davranış.
+
+**6. Piyasa gerçekliği.** Guardrail'e takılmayan 10.076 adayda 5 dk orta getiri +%0,01, net −%0,28. Hiçbir basit kesit pozitif değil: saat, volatilite, momentum, RSI, spread, legacy BUY.
+> **Yorum:** Piyasa ortalamada yatay; maliyet (~%0,29) tipik 5 dakikalık hareketle aynı büyüklükte. Kârlılık için ya çok iyi seçim ya da düşük maliyet gerekiyor.
+
+**7. Fiyat yolu analizi** (9.544 aday, 15 dk):
+- Adayların **%38'inde** fiyat bir an maliyeti aştı.
+- 20 kâr-al / zarar-kes kombinasyonunun hiçbiri pozitif ortalama vermedi. En iyi sonuçlar: tüm adaylar −%0,25, legacy BUY −%0,24, **Laya'nın en iyi %10'u −%0,17**.
+> **Yorum:** Fırsatlar vardı ama önceden seçilemedi. Laya'nın sıralaması ortalamadan belirgin iyi, yani model bir miktar ayırt ediyor; bu, MLP ile güçlendirilmeye değer bir sinyal. Yine de maliyeti kapatmaya yetmiyor.
+
+**8. Ufuk.** 1/5/15 dk'da maliyeti aşan hareket payı %2,4 / %9,7 / %19,6; ortalama net −%0,29 / −%0,28 / −%0,26.
+> **Yorum:** Uzun ufuk maliyete karşı daha fazla alan tanıyor. MLP'nin 15 dk başı bu yüzden planda.
+
+**Genel değerlendirme.** Altyapı hedefine ulaştı: kayıt, eğitim, değerlendirme ve canlı sanal işlem döngüsü çalışıyor ve kendini yeniden eğitebiliyor. Kârlı bir alım kuralı ise henüz bulunamadı; veriler bunun nedenini açıkça gösteriyor. Sonraki iyileştirme alanları: sayısal girdiye uygun bir model (MLP), daha çeşitli ve fazla veri, daha düşük maliyetli yürütme.
+
+## 6. Modeller ve veriler
+
+Büyük dosyalar **Git LFS**'te (~2,1 GB). Klonlamadan önce `git lfs install` çalıştırın.
+
+| Yol | İçerik |
+|---|---|
+| `models/laya-bsjev-night/` | **Varsayılan** checkpoint. v1 + gece sonuçları. SHA-256 `04e877b5…c224b` |
+| `models/laya-bsjev/` | v1: JEV kararları + sonuçları. JEV taklidi daha iyi; `entry_policy: action` için. SHA-256 `66a5cfff…d9b79` |
+| `data/jev_demo.sqlite3`, `verification/` | Gerçek JEV kayıtları: 13 oturum, 1.691 karar. Öğretmen verisi |
+| `data/laya_night.sqlite3` | Laya gece oturumu: 27 Eyl 2026 04:45–12:45, 15.646 karar |
+| `data/laya_dataset/`, `data/laya_dataset_night/` | Eğitim setleri. Yukarıdaki journal'lardan **bayt bayt yeniden üretilebilir** (hash'ler manifest'te) |
+| `data/laya_live_smoke.sqlite3`, `data/replay/`, `data/fixture_demo.sqlite3` | Canlı doğrulama, sentetik replay, fixture (JEV değil) |
+| `reports/laya_eval_*.json`, `logs/`, `research/` | Değerlendirmeler, eğitim logları (reddedilen v2 dahil), fiyat yolu analizi |
+
+- **Taban model:** [`convaiinnovations/laya`](https://huggingface.co/convaiinnovations/laya) `multilingual` (mmBERT-base, 322M, Apache-2.0), snapshot `55cf4c4e…`.
+- **İnce ayar:** RLCD; 256k embedding dondurulmuş, 125M parametre eğitildi; RTX 4070 Laptop, bf16.
+- Her checkpoint'in `rl_agent_config.json` dosyası; hiperparametreleri, veri seti hash'ini, kapsamı ve kalibre eşiği içerir.
+
+## 7. Çalıştırma
 
 ```bash
-# 1. Sanal ortam oluşturma ve etkinleştirme
-python -m venv .venv
+git lfs install
+python -m venv .venv && .venv/Scripts/python -m pip install -r requirements-laya.txt   # CUDA'lı torch'u önce kurun
 
-# Windows Powershell:
-.venv\Scripts\activate
+# Laya (varsayılan, yerel)
+cp config.laya.example.yaml config.laya.yaml          # auth.password'ü değiştirin
+.venv/Scripts/python tools/laya_probe.py --config config.laya.yaml      # ağsız hızlı kontrol
+.venv/Scripts/python main.py --config config.laya.yaml --mode test      # web paneli: http://127.0.0.1:8000
 
-# 2. Gereksinimleri yükleme:
-pip install -r requirements.txt
+# Veri toplama oturumu (8 saat, journal OneDrive dışında)
+.venv/Scripts/python main.py --config config.laya.night.example.yaml --mode test --cli --duration 480
 
-# 3. Yapılandırma dosyalarını örneklerden oluşturma:
-# Test modu için:
-Copy-Item config.test.example.yaml config.test.yaml
-# Canlı mod için (API anahtarlarınızı bu dosyaya yazacaksınız):
-Copy-Item config.live.example.yaml config.live.yaml
+# JEV (OpenRouter anahtarı gerekir, ücretlidir)
+export OPENROUTER_API_KEY=...
+.venv/Scripts/python main.py --config config.jev.example.yaml --mode test
+
+# Testler (ağ ve gerçek emir engelli)
+.venv/Scripts/python tools/run_offline_tests.py -q
 ```
 
----
+Yeniden eğitim ve değerlendirme komutları: [docs/LAYA_INTEGRATION.md](docs/LAYA_INTEGRATION.md) §5, §5b.
 
-## 🖥️ Çalıştırma ve Mod Geçişleri
+## 8. Dokümanlar
 
-### 1. Web Kontrol Paneli ile Çalıştırma (Önerilen)
+| Doküman | İçerik |
+|---|---|
+| [docs/LAYA_INTEGRATION.md](docs/LAYA_INTEGRATION.md) | Laya motoru, eğitim hattı, tüm ölçümler |
+| [docs/JEV_INTEGRATION.md](docs/JEV_INTEGRATION.md) | JEV motoru, journal şeması, replay ve dışa aktarma |
+| `docs/JEV_KARAR_DENETIMI_*`, `docs/JEV_DUZELTME_RAPORU_*`, `docs/JEV_TESLIM_RAPORU.md`, `docs/JEV_WEB_TEST.md`, `docs/DEMO_REPORT.md`, `docs/PRE_JEV_NOTES.md` | JEV geliştirme sürecinin denetim, düzeltme ve test raporları |
+| [docs/LEGACY_BOT.md](docs/LEGACY_BOT.md) | Orijinal botun (legacy mod) özellikleri ve stratejileri |
 
-```bash
-# 🟢 Test / Simülasyon Modunda Başlatma (Varsayılan: config.test.yaml)
-.venv\Scripts\python main.py --mode test
+## 9. Sınırlar ve notlar
 
-# 🔴 Gerçek Emir (Live) Modunda Başlatma (Varsayılan: config.live.yaml)
-.venv\Scripts\python main.py --mode live
-
-# 📁 Özel bir config dosyası ile başlatma:
-.venv\Scripts\python main.py --config ozel_ayar.yaml
-```
-
-Tarayıcınızda açın:  
-👉 **http://localhost:8000** (Varsayılan Giriş: `admin` / `admin123`)
-
----
-
-### 2. Terminal (CLI) Modunda Çalıştırma
-
-```bash
-# 🟢 15 Dakikalık Test Simülasyonu
-.venv\Scripts\python main.py --mode test --cli --duration 15
-
-# 🔴 Canlı Modda Belirli Bir Parite ile Çalıştırma
-.venv\Scripts\python main.py --mode live --cli --duration 30 --symbol BTC_TRY --strategy fee_recovery
-```
-
-**Komut Satırı Parametreleri:**
-- `--mode`: `test` (Simülasyon) veya `live` (Gerçek Emir)
-- `--config`: Özel config yaml dosya yolu
-- `--cli`: Web paneli yerine Terminal CLI modunda çalıştır
-- `--duration`: Oturum süresi (dakika)
-- `--strategy`: `fee_recovery`, `adaptive_regime`, `rsi_bollinger`, `momentum_ema`, `grid_scalper`
-- `--symbol`: `AUTO` (Radar) veya `BTC_TRY`, `USDT_TRY`, `SOL_TRY` vb.
-- `--port`: Web sunucu portu (varsayılan: 8000)
-
----
-
-## 🧪 Testleri Çalıştırma
-
-Tüm mod geçişleri, simülatör, portföy stop-loss sigortası, pozisyon devri ve web paneli testlerini çalıştırmak için:
-
-```bash
-.venv\Scripts\python -m pytest tests/ -v
-```
-
----
-
-## 📁 Proje Dosya Yapısı
-
-```
-binancetr-bot/
-├── config.test.example.yaml  # Git için örnek test yapılandırma şablonu
-├── config.live.example.yaml  # Git için örnek canlı işlem yapılandırma şablonu
-├── config.example.yaml       # Git için genel şablon
-├── config.test.yaml          # Yerel test ayarlarınız (.gitignore ile korunur)
-├── config.live.yaml          # Yerel canlı ayarlarınız & API Key (.gitignore ile korunur)
-├── config.py                 # Dinamik konfigürasyon yöneticisi
-├── bot.py                    # Ana bot koordinatörü & risk döngüsü
-├── main.py                   # CLI & Web mod değiştirici başlatıcı
-├── core/
-│   ├── binance_client.py     # Binance TR REST istemcisi (Connection Pool & Timeout)
-│   ├── market_data.py        # Canlı tahta ve teknik göstergeler (EMA, RSI, BB, ATR, ADX)
-│   ├── market_scanner.py     # Otomatik radar tarayıcısı & Aday izleme motoru
-│   ├── risk_manager.py       # TP, SL, Trailing Stop, Cooldown, Rollover
-│   ├── simulator.py          # Sanal bakiye simülatörü & Portföy özeti
-│   └── live_trader.py        # Gerçek hesap emir motoru & Cüzdan senkronizasyonu
-├── strategies/               # Ticaret stratejileri (fee_recovery, adaptive_regime vb.)
-├── reporting/                # Performans karnesi ve HTML/JSON rapor üretici
-├── web/                      # Modern Web Paneli (FastAPI, HTML/CSS/JS)
-├── reports/                  # Üretilen test raporları (.gitignore ile korunur)
-├── data/                     # Yerel pozisyon verileri (.gitignore ile korunur)
-└── tests/                    # Birim ve entegrasyon testleri (23 test)
-```
-
----
-
-## ⚠️ Sorumluluk Reddi Beyanı (Disclaimer)
-
-> [!WARNING]
-> **Yatırım Tavsiyesi Değildir:**  
-> Bu yazılım yalnızca **eğitim, araştırma ve deneysel algoritmik ticaret testleri** amacıyla geliştirilmiştir. Projede yer alan hiçbir kod, strateji, gösterge veya varsayılan parametre yatırım danışmanlığı veya finansal tavsiye niteliği taşımaz.
-
-- **Kripto Varlık Riski:** Kripto para piyasaları son derece yüksek volatiliteye sahiptir ve ani fiyat dalgalanmaları nedeniyle ciddi sermaye kaybı riski barındırır.
-- **Kullanıcı Sorumluluğu:** Botun canlı modda (`--mode live`) çalıştırılması, gerçek API anahtarlarının kullanılması, emir iletimi, bütçe yönetimi ve gerçekleşen tüm al-sat işlemlerinden doğabilecek kâr veya zararlar tamamen kullanıcının kendi sorumluluğundadır.
-- **Teknik ve Ağ Riskleri:** Borsa API kesintileri, emir iletim gecikmeleri, internet bağlantı kopmaları, slipaj (kayma) veya yazılımsal/donanımsal aksaklıklardan ötürü oluşabilecek hiçbir doğrudan veya dolaylı kayıptan geliştiriciler sorumlu tutulamaz.
-- **Tavsiye:** Gerçek sermaye ile işlem yapmadan önce botu sanal bütçeli **Test/Simülasyon Modunda (`--mode test`)** kapsamlı şekilde denemeniz ve risk yönetimi prensiplerini uygulamanız önemle tavsiye edilir.
+- Sayılar tek makine, iki gün ve tek bir sabah oturumuna dayanıyor. Aynı dakikadaki kararlar birbiriyle koreledir. Markout'larda derinlik ve gecikme modellenmedi. Sonuçlar performans vaadi değildir.
+- `data/` altındaki JEV yanıtları TypeSafe/OpenRouter çıktılarıdır. Bunları ve bunlardan türeyen modelleri yeniden dağıtmadan önce sağlayıcıların kullanım koşullarını kontrol edin. Taban Laya modeli Apache-2.0 lisanslıdır; upstream reposunda lisans dosyası yoktur.
+- Manifest ve metadata alanlarında yerel dosya yolları görünür.

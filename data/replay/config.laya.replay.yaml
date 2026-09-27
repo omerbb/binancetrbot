@@ -1,5 +1,5 @@
 # Laya (local, fine-tuned on JEV history + observed outcomes). Paper execution ONLY.
-# No API key, no network for decisions, no per-call cost. Copy to config.laya.yaml. See LAYA_INTEGRATION.md.
+# No API key, no network for decisions, no per-call cost. Copy to config.laya.yaml. See docs/LAYA_INTEGRATION.md.
 trading:
   mode: simulation
   symbol: AUTO

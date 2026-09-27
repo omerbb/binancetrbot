@@ -1,6 +1,6 @@
 # Overnight DATA COLLECTION profile for Laya. Paper execution ONLY. Run with --cli --duration 480.
 # The journal lives OUTSIDE OneDrive: a growing SQLite file must not be synced while written.
-# No API key, no network for decisions, no per-call cost. Copy to config.laya.yaml. See LAYA_INTEGRATION.md.
+# No API key, no network for decisions, no per-call cost. Copy to config.laya.yaml. See docs/LAYA_INTEGRATION.md.
 trading:
   mode: simulation
   symbol: AUTO

@@ -1,5 +1,5 @@
 # JEV + OpenRouter. Paper execution ONLY; key comes from OPENROUTER_API_KEY.
-# Copy to config.jev.yaml. See JEV_INTEGRATION.md.
+# Copy to config.jev.yaml. See docs/JEV_INTEGRATION.md.
 trading:
   mode: simulation
   symbol: AUTO
